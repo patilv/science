@@ -85,24 +85,43 @@
       .header-pad { padding-top: 10px !important; padding-bottom: 6px !important; }
     }
 
-    /* Swipe hint that pulses once and fades out */
+    /* Swipe hint stays visible until user interacts with the table */
     .swipe-hint {
       position: absolute; left: 50%; top: 50%;
       transform: translate(-50%, -50%);
-      pointer-events: none; z-index: 6;
-      animation: swipefade 4s ease-out forwards;
+      z-index: 6;
+      cursor: pointer;
+      animation: hintIn 0.4s ease-out;
     }
-    @keyframes swipefade {
-      0%   { opacity: 0; }
-      15%  { opacity: 1; }
-      75%  { opacity: 1; }
-      100% { opacity: 0; }
+    @keyframes hintIn {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     }
-    @keyframes swipemove {
-      0%, 100% { transform: translateX(-30px); }
-      50%      { transform: translateX(30px); }
+    .swipe-card {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 22px; border-radius: 999px;
+      background: linear-gradient(90deg, #22d3ee, #d946ef);
+      color: #0f172a;
+      font-family: 'Orbitron', sans-serif; font-size: 13px;
+      letter-spacing: 0.22em; font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 0 40px rgba(34,211,238,0.55), 0 6px 24px rgba(0,0,0,0.4);
+      animation: hintPulse 1.8s ease-in-out infinite;
     }
-    .swipe-hand { animation: swipemove 1.6s ease-in-out infinite; }
+    @keyframes hintPulse {
+      0%, 100% { box-shadow: 0 0 35px rgba(34,211,238,0.5), 0 6px 20px rgba(0,0,0,0.35); }
+      50%      { box-shadow: 0 0 65px rgba(217,70,239,0.8), 0 6px 28px rgba(0,0,0,0.4); }
+    }
+    .swipe-arrow-l, .swipe-arrow-r { font-size: 18px; display: inline-block; }
+    .swipe-arrow-l { animation: arrL 1.4s ease-in-out infinite; }
+    .swipe-arrow-r { animation: arrR 1.4s ease-in-out infinite; }
+    @keyframes arrL { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-7px); } }
+    @keyframes arrR { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(7px); } }
+    .swipe-tap-hint {
+      text-align: center; margin-top: 10px;
+      font-family: 'Orbitron', sans-serif; font-size: 9px;
+      letter-spacing: 0.3em; color: rgba(241,245,249,0.7);
+    }
   </style>
 </head>
 <body>
@@ -1050,7 +1069,9 @@ function TableView({ filter, setFilter, search, setSearch, elements, filteredSet
 
       {/* Periodic Table grid */}
       <div className="table-scroll-wrap">
-        <div className="table-scroll overflow-x-auto pb-4 -mx-2 sm:mx-0" onTouchStart={dismissSwipeHint}>
+        <div className="table-scroll overflow-x-auto pb-4 -mx-2 sm:mx-0"
+             onTouchStart={dismissSwipeHint}
+             onScroll={dismissSwipeHint}>
           <div className="min-w-[1100px] px-2">
           <div className="grid gap-[3px]" style={{
             gridTemplateColumns: 'repeat(18, minmax(0, 1fr))',
@@ -1072,12 +1093,13 @@ function TableView({ filter, setFilter, search, setSearch, elements, filteredSet
         </div>
         </div>
         {showSwipeHint && (
-          <div className="swipe-hint">
-            <div className="swipe-hand flex flex-col items-center gap-2 text-cyan-200">
-              <div className="px-4 py-2 rounded-full bg-cyan-500/90 text-slate-900 font-display text-xs tracking-widest shadow-[0_0_30px_rgba(34,211,238,0.6)]">
-                ← SWIPE TO EXPLORE →
-              </div>
+          <div className="swipe-hint" onClick={dismissSwipeHint}>
+            <div className="swipe-card">
+              <span className="swipe-arrow-l">←</span>
+              <span>SWIPE TO EXPLORE</span>
+              <span className="swipe-arrow-r">→</span>
             </div>
+            <div className="swipe-tap-hint">TAP ANYWHERE TO DISMISS</div>
           </div>
         )}
       </div>
