@@ -1022,10 +1022,10 @@ function ElementModal({ el, onClose }) {
 
         {/* Top banner */}
         <div className={`relative bg-gradient-to-br ${cat.tile} p-6 sm:p-8 overflow-hidden`}>
-          <button onClick={onClose} className="absolute top-3 right-3 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white transition-colors">
+          <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 p-2.5 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
-          <div className="absolute -bottom-10 -right-10 text-[180px] sm:text-[220px] font-display font-bold text-white/10 leading-none select-none">
+          <div className="pointer-events-none absolute -bottom-10 -right-10 text-[180px] sm:text-[220px] font-display font-bold text-white/10 leading-none select-none">
             {el.s}
           </div>
           <div className="relative flex items-end gap-4 sm:gap-6">
