@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atomic Lab — Interactive Periodic Table</title>
+  <meta name="description" content="An interactive, gamified periodic table for curious explorers. Discover all 118 elements, play games, earn XP, and unlock trophies." />
+
+  <!-- Tailwind CSS via Play CDN (no build step) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+
+  <style>
+    html, body { background: #070b18; min-height: 100vh; }
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #f1f5f9; }
+    .font-display { font-family: 'Orbitron', system-ui, sans-serif; letter-spacing: 0.02em; }
+    .font-body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .font-fact { font-family: 'Caveat', cursive; }
+
+    /* Initial loading screen */
+    #boot {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      z-index: 999; background: #070b18; transition: opacity 0.4s;
+    }
+    #boot .ring {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 3px solid rgba(34, 211, 238, 0.2);
+      border-top-color: #22d3ee;
+      animation: spin 0.9s linear infinite;
+    }
+    #boot p {
+      margin-top: 18px; font-family: 'Orbitron', sans-serif;
+      letter-spacing: 0.3em; font-size: 11px; color: #67e8f9;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <!-- Loading screen, removed once React mounts -->
+  <div id="boot">
+    <div style="text-align:center">
+      <div class="ring"></div>
+      <p>INITIALIZING ATOMIC LAB</p>
+    </div>
+  </div>
+
+  <div id="root"></div>
+
+  <!-- React 18 (production builds) -->
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+
+  <!-- Babel Standalone — compiles JSX in the browser -->
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+
+  <!-- Lucide icons (UMD build) -->
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+
+  <!-- Hidden token bag so Tailwind Play CDN picks up dynamic classes -->
+  <div class="hidden
+    from-rose-500 to-red-600 from-orange-500 to-amber-600 from-sky-500 to-blue-600
+    from-emerald-500 to-green-600 from-teal-500 to-cyan-600 from-yellow-400 to-amber-500
+    from-lime-400 to-green-500 from-fuchsia-500 to-purple-600 from-pink-500 to-rose-500
+    from-fuchsia-600 to-pink-700 from-cyan-500 to-blue-600 from-amber-500 to-orange-600
+    from-fuchsia-500 to-purple-600 from-emerald-500 to-teal-600 from-amber-400 to-fuchsia-500
+    from-cyan-400 to-fuchsia-500 from-amber-500/15 to-fuchsia-500/15 from-amber-500/95 to-fuchsia-500/95
+    from-cyan-300 via-fuchsia-300 to-amber-300 from-cyan-400 via-fuchsia-400 to-amber-400
+    text-rose-200 text-orange-200 text-sky-200 text-emerald-200 text-teal-200 text-yellow-200
+    text-lime-200 text-fuchsia-200 text-pink-200 text-cyan-200 text-cyan-300 text-amber-300
+    text-emerald-300 text-fuchsia-300 text-emerald-400 text-lime-400 text-yellow-400
+    text-orange-400 text-red-400 text-amber-400 text-pink-300 text-fuchsia-300
+    bg-emerald-500/15 border-emerald-400/40 bg-lime-500/15 border-lime-400/40
+    bg-yellow-500/15 border-yellow-400/40 bg-orange-500/15 border-orange-400/40
+    bg-red-500/15 border-red-400/40
+  "></div>
+
+  <!-- App code: JSX, compiled by Babel at runtime -->
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef, useMemo, useLayoutEffect } = React;
+
+    /* ======================================================================
+       Lucide icon component — wraps lucide.createElement output as an SVG
+       ====================================================================== */
+    function L({ name, className = '', size = 24, strokeWidth = 2, ...rest }) {
+      const ref = useRef(null);
+      useLayoutEffect(() => {
+        if (!ref.current || !window.lucide) return;
+        const lib = window.lucide;
+        // The UMD build exposes lucide.icons[PascalName] as the icon node
+        const node = lib.icons && lib.icons[name];
+        if (!node) return;
+        const svg = lib.createElement(node);
+        svg.setAttribute('width', size);
+        svg.setAttribute('height', size);
+        svg.setAttribute('stroke-width', strokeWidth);
+        if (className) svg.setAttribute('class', className);
+        // Replace any existing children
+        ref.current.replaceChildren(svg);
+      }, [name, size, strokeWidth, className]);
+      return <span ref={ref} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle' }} />;
+    }
+
+    // Aliases that mirror the original lucide-react named imports
+    const Sparkles      = (p) => <L name="Sparkles" {...p} />;
+    const Trophy        = (p) => <L name="Trophy" {...p} />;
+    const Atom          = (p) => <L name="Atom" {...p} />;
+    const BookOpen      = (p) => <L name="BookOpen" {...p} />;
+    const Zap           = (p) => <L name="Zap" {...p} />;
+    const Award         = (p) => <L name="Award" {...p} />;
+    const Star          = (p) => <L name="Star" {...p} />;
+    const X             = (p) => <L name="X" {...p} />;
+    const AlertTriangle = (p) => <L name="AlertTriangle" {...p} />;
+    const Shield        = (p) => <L name="Shield" {...p} />;
+    const Beaker        = (p) => <L name="Beaker" {...p} />;
+    const Brain         = (p) => <L name="Brain" {...p} />;
+    const Target        = (p) => <L name="Target" {...p} />;
+    const Timer         = (p) => <L name="Timer" {...p} />;
+    const RefreshCw     = (p) => <L name="RefreshCw" {...p} />;
+    const ChevronRight  = (p) => <L name="ChevronRight" {...p} />;
+    const Lock          = (p) => <L name="Lock" {...p} />;
+    const Lightbulb     = (p) => <L name="Lightbulb" {...p} />;
+    const Heart         = (p) => <L name="Heart" {...p} />;
+    const Flame         = (p) => <L name="Flame" {...p} />;
+    const Search        = (p) => <L name="Search" {...p} />;
+    const Filter        = (p) => <L name="Filter" {...p} />;
+    const ChevronLeft   = (p) => <L name="ChevronLeft" {...p} />;
+    const Check         = (p) => <L name="Check" {...p} />;
+    const Skull         = (p) => <L name="Skull" {...p} />;
+    const Radiation     = (p) => <L name="Radiation" {...p} />;
+    const Microscope    = (p) => <L name="Microscope" {...p} />;
+    const Sparkle       = (p) => <L name="Sparkle" {...p} />;
+    const Crown         = (p) => <L name="Crown" {...p} />;
+
+
+/* =========================================================================
+   118 ELEMENTS — Kid-friendly data
+   danger: 1=safe, 2=mostly safe, 3=careful, 4=dangerous, 5=extreme
+   ========================================================================= */
+const ELEMENTS = [
+  { n: 1, s: 'H', name: 'Hydrogen', mass: 1.008, cat: 'nonmetal', row: 1, col: 1, danger: 3, emoji: '💨',
+    desc: 'The lightest and most common element in the entire universe. Stars are mostly made of hydrogen!',
+    uses: 'Rocket fuel, making water (H₂O), and one day might power our cars as clean energy.',
+    fact: 'The Sun burns 600 million tons of hydrogen every single second.' },
+  { n: 2, s: 'He', name: 'Helium', mass: 4.0026, cat: 'noble', row: 1, col: 18, danger: 1, emoji: '🎈',
+    desc: 'A super light gas that makes balloons float and your voice sound funny when you breathe it.',
+    uses: 'Party balloons, MRI machines in hospitals, and cooling spacecraft instruments.',
+    fact: 'Helium was discovered on the Sun before it was found on Earth!' },
+  { n: 3, s: 'Li', name: 'Lithium', mass: 6.94, cat: 'alkali', row: 2, col: 1, danger: 3, emoji: '🔋',
+    desc: 'The lightest metal. So light it actually floats on water (and reacts with it).',
+    uses: 'Powers your phone, laptop, and electric car batteries. Also helps treat some illnesses.',
+    fact: 'Lithium is so soft you can cut it with a butter knife!' },
+  { n: 4, s: 'Be', name: 'Beryllium', mass: 9.0122, cat: 'alkaline', row: 2, col: 2, danger: 4, emoji: '✨',
+    desc: 'A rare, strong, super-light metal. Used to make emerald gems sparkle green.',
+    uses: 'Spacecraft parts, X-ray windows, and high-tech military equipment.',
+    fact: 'The James Webb Space Telescope mirrors are made of beryllium!' },
+  { n: 5, s: 'B', name: 'Boron', mass: 10.81, cat: 'metalloid', row: 2, col: 13, danger: 2, emoji: '🧼',
+    desc: 'A tough little element that helps plants grow and makes glass strong.',
+    uses: 'Laundry detergent, heat-resistant glass (like Pyrex), and slime!',
+    fact: 'Boron is what makes silly putty and slime stretchy and bouncy.' },
+  { n: 6, s: 'C', name: 'Carbon', mass: 12.011, cat: 'nonmetal', row: 2, col: 14, danger: 2, emoji: '💎',
+    desc: 'The element of life! Every living thing on Earth is built from carbon.',
+    uses: 'Diamonds, pencil lead, charcoal, and... you! Your body is 18% carbon.',
+    fact: 'Diamonds and pencil lead are both pure carbon, just arranged differently!' },
+  { n: 7, s: 'N', name: 'Nitrogen', mass: 14.007, cat: 'nonmetal', row: 2, col: 15, danger: 2, emoji: '🌬️',
+    desc: 'About 78% of the air you breathe is nitrogen. It is everywhere!',
+    uses: 'Fertilizers for crops, freezing things super cold, and inflating tires.',
+    fact: 'Liquid nitrogen is so cold (-321°F) it can shatter a rose into pieces.' },
+  { n: 8, s: 'O', name: 'Oxygen', mass: 15.999, cat: 'nonmetal', row: 2, col: 16, danger: 2, emoji: '🌬️',
+    desc: 'The reason you can breathe. Plants make it, and we cannot live without it.',
+    uses: 'Breathing, fire (it needs oxygen to burn), and rocket fuel oxidizer.',
+    fact: 'Oxygen is actually pale blue when it becomes a liquid!' },
+  { n: 9, s: 'F', name: 'Fluorine', mass: 18.998, cat: 'halogen', row: 2, col: 17, danger: 5, emoji: '🦷',
+    desc: 'The most reactive element on the periodic table. Extremely dangerous on its own.',
+    uses: 'Toothpaste (in tiny safe amounts), non-stick pans, and refrigerator coolant.',
+    fact: 'Pure fluorine gas can set glass, water, and even sand on fire.' },
+  { n: 10, s: 'Ne', name: 'Neon', mass: 20.180, cat: 'noble', row: 2, col: 18, danger: 1, emoji: '🌃',
+    desc: 'A noble gas that glows bright reddish-orange when electricity passes through it.',
+    uses: 'Glowing neon signs, high-voltage indicators, and TV tubes.',
+    fact: 'Real neon signs are only orange-red. Other colors come from different gases!' },
+  { n: 11, s: 'Na', name: 'Sodium', mass: 22.990, cat: 'alkali', row: 3, col: 1, danger: 4, emoji: '🧂',
+    desc: 'A soft, silvery metal that explodes when it touches water!',
+    uses: 'When combined with chlorine it becomes table salt. Also in street lamps.',
+    fact: 'A pea-sized chunk of sodium thrown in water creates a fiery yellow explosion.' },
+  { n: 12, s: 'Mg', name: 'Magnesium', mass: 24.305, cat: 'alkaline', row: 3, col: 2, danger: 3, emoji: '🔥',
+    desc: 'Burns with a blinding white flame so bright it can damage your eyes.',
+    uses: 'Fireworks, flares, lightweight airplane parts, and vitamin supplements.',
+    fact: 'Old camera flashes used burning magnesium to light up photos!' },
+  { n: 13, s: 'Al', name: 'Aluminum', mass: 26.982, cat: 'post-transition', row: 3, col: 13, danger: 1, emoji: '🥫',
+    desc: 'A lightweight, shiny metal that does not rust. Super useful and recyclable.',
+    uses: 'Soda cans, foil for cooking, airplane bodies, and bicycle frames.',
+    fact: 'Aluminum used to be more valuable than gold in the 1800s!' },
+  { n: 14, s: 'Si', name: 'Silicon', mass: 28.085, cat: 'metalloid', row: 3, col: 14, danger: 1, emoji: '💻',
+    desc: 'The brain behind every computer chip. Sand on the beach is mostly silicon.',
+    uses: 'Computer chips, glass, solar panels, and rubbery silicone toys.',
+    fact: 'Silicon Valley got its name because of computer chips made from silicon!' },
+  { n: 15, s: 'P', name: 'Phosphorus', mass: 30.974, cat: 'nonmetal', row: 3, col: 15, danger: 4, emoji: '🔥',
+    desc: 'White phosphorus catches fire just from touching air. Glow-in-the-dark element!',
+    uses: 'Match heads, fertilizers, fireworks, and bones (yours have phosphorus too).',
+    fact: 'White phosphorus glows green in the dark, which is where the word phosphorescent comes from.' },
+  { n: 16, s: 'S', name: 'Sulfur', mass: 32.06, cat: 'nonmetal', row: 3, col: 16, danger: 2, emoji: '🥚',
+    desc: 'The yellow stuff that smells like rotten eggs. Found around volcanoes.',
+    uses: 'Gunpowder, matches, rubber tires, and stink bombs.',
+    fact: 'The smell of rotten eggs and skunks both come from sulfur compounds!' },
+  { n: 17, s: 'Cl', name: 'Chlorine', mass: 35.45, cat: 'halogen', row: 3, col: 17, danger: 4, emoji: '🏊',
+    desc: 'A greenish-yellow gas that is poisonous on its own but keeps pools clean.',
+    uses: 'Cleaning swimming pools, bleach, drinking water disinfection, and salt.',
+    fact: 'That pool smell is not chlorine, it is chlorine reacting with sweat and oils!' },
+  { n: 18, s: 'Ar', name: 'Argon', mass: 39.948, cat: 'noble', row: 3, col: 18, danger: 1, emoji: '💡',
+    desc: 'A noble gas that does not react with anything. Lazy but useful!',
+    uses: 'Inside light bulbs, protecting metals while welding, and double-pane windows.',
+    fact: 'About 1% of the air you breathe is argon, even though you cannot smell or see it!' },
+  { n: 19, s: 'K', name: 'Potassium', mass: 39.098, cat: 'alkali', row: 4, col: 1, danger: 4, emoji: '🍌',
+    desc: 'Even more explosive in water than sodium. Bursts into purple flames!',
+    uses: 'Fertilizers, fireworks (for purple), and your body needs it to stay healthy.',
+    fact: 'Bananas are radioactive because of the potassium they contain (but totally safe to eat).' },
+  { n: 20, s: 'Ca', name: 'Calcium', mass: 40.078, cat: 'alkaline', row: 4, col: 2, danger: 2, emoji: '🦴',
+    desc: 'The element that builds your bones and teeth. Drink your milk!',
+    uses: 'Bones, teeth, chalk, cement, and seashells.',
+    fact: 'Your body has about 2.2 pounds of calcium, mostly in your bones and teeth!' },
+  { n: 21, s: 'Sc', name: 'Scandium', mass: 44.956, cat: 'transition', row: 4, col: 3, danger: 2, emoji: '🚲',
+    desc: 'A rare silvery metal that makes things super strong but lightweight.',
+    uses: 'High-end bicycle frames, baseball bats, and stadium lights.',
+    fact: 'Scandium-aluminum alloy was used on Soviet MiG fighter jets!' },
+  { n: 22, s: 'Ti', name: 'Titanium', mass: 47.867, cat: 'transition', row: 4, col: 4, danger: 1, emoji: '🛩️',
+    desc: 'Strong as steel but half the weight. Doctors put it inside human bodies!',
+    uses: 'Airplane parts, hip replacements, eyeglass frames, and submarines.',
+    fact: 'Titanium is named after the Titans, the powerful giants of Greek mythology!' },
+  { n: 23, s: 'V', name: 'Vanadium', mass: 50.942, cat: 'transition', row: 4, col: 5, danger: 3, emoji: '🔧',
+    desc: 'Makes steel tools and tank armor extra tough. Also forms colorful compounds.',
+    uses: 'Wrench and tool steel, jet engines, and rust-proof coatings.',
+    fact: 'Vanadium compounds can be five different bright colors depending on how they bond!' },
+  { n: 24, s: 'Cr', name: 'Chromium', mass: 51.996, cat: 'transition', row: 4, col: 6, danger: 3, emoji: '🚗',
+    desc: 'The shiny metal that makes things look mirror-perfect. Stainless steel hero.',
+    uses: 'Chrome plating on cars and tools, stainless steel, and emerald green color.',
+    fact: 'The word chromium comes from the Greek word for color, since it makes such bright pigments.' },
+  { n: 25, s: 'Mn', name: 'Manganese', mass: 54.938, cat: 'transition', row: 4, col: 7, danger: 3, emoji: '🥫',
+    desc: 'Makes steel super hard and is in almost every battery you own.',
+    uses: 'Steel for railroad tracks, alkaline batteries, and ceramic glazes.',
+    fact: 'Cave paintings from 17,000 years ago used black manganese pigments!' },
+  { n: 26, s: 'Fe', name: 'Iron', mass: 55.845, cat: 'transition', row: 4, col: 8, danger: 1, emoji: '🧲',
+    desc: 'The element that built civilization. Magnetic, strong, and inside your blood!',
+    uses: 'Steel for buildings and bridges, magnets, cars, and your red blood cells.',
+    fact: 'Earth core is mostly iron and that is why we have a magnetic field!' },
+  { n: 27, s: 'Co', name: 'Cobalt', mass: 58.933, cat: 'transition', row: 4, col: 9, danger: 3, emoji: '💙',
+    desc: 'Famous for making the gorgeous deep blue color in glass and ceramics.',
+    uses: 'Strong magnets, jet engines, lithium batteries, and blue paint.',
+    fact: 'Cobalt blue glass has been used for over 4,000 years and still looks brilliant!' },
+  { n: 28, s: 'Ni', name: 'Nickel', mass: 58.693, cat: 'transition', row: 4, col: 10, danger: 2, emoji: '🪙',
+    desc: 'A silvery metal that resists rust. The U.S. five-cent coin is named after it.',
+    uses: 'Coins, stainless steel, rechargeable batteries, and guitar strings.',
+    fact: 'A U.S. nickel is actually only 25% nickel, the rest is copper!' },
+  { n: 29, s: 'Cu', name: 'Copper', mass: 63.546, cat: 'transition', row: 4, col: 11, danger: 2, emoji: '🟠',
+    desc: 'The reddish-orange metal that conducts electricity better than almost anything.',
+    uses: 'Electrical wires, pennies, plumbing pipes, and the Statue of Liberty.',
+    fact: 'The Statue of Liberty is green because her copper skin reacted with air over 100 years!' },
+  { n: 30, s: 'Zn', name: 'Zinc', mass: 65.38, cat: 'transition', row: 4, col: 12, danger: 2, emoji: '🪙',
+    desc: 'Coats steel to keep it from rusting. Pennies are mostly made of it.',
+    uses: 'Galvanized nails, sunscreen, batteries, and the inside of pennies.',
+    fact: 'A modern U.S. penny is 97.5% zinc with just a thin copper coating!' },
+  { n: 31, s: 'Ga', name: 'Gallium', mass: 69.723, cat: 'post-transition', row: 4, col: 13, danger: 2, emoji: '🥄',
+    desc: 'A solid metal that melts in your hand! Magic spoons that disappear in tea.',
+    uses: 'LED lights, smartphone chips, solar panels, and prank disappearing spoons.',
+    fact: 'Gallium melts at 86°F, so it turns liquid just from your body heat!' },
+  { n: 32, s: 'Ge', name: 'Germanium', mass: 72.630, cat: 'metalloid', row: 4, col: 14, danger: 2, emoji: '📡',
+    desc: 'Helped create the very first transistors and changed electronics forever.',
+    uses: 'Fiber optic cables, infrared night vision goggles, and old-school radios.',
+    fact: 'Germanium was used in the first transistor ever made, in 1947!' },
+  { n: 33, s: 'As', name: 'Arsenic', mass: 74.922, cat: 'metalloid', row: 4, col: 15, danger: 5, emoji: '☠️',
+    desc: 'Famous in mystery novels as a poison. Extremely dangerous!',
+    uses: 'Tiny amounts in computer chips and old wood preservatives.',
+    fact: 'Arsenic was once called the poison of kings because it killed so many royals.' },
+  { n: 34, s: 'Se', name: 'Selenium', mass: 78.971, cat: 'nonmetal', row: 4, col: 16, danger: 3, emoji: '🧴',
+    desc: 'Your body needs tiny amounts. Too much is toxic. Found in Brazil nuts!',
+    uses: 'Anti-dandruff shampoo, glass coloring, and photocopier drums.',
+    fact: 'Just two Brazil nuts contain all the selenium your body needs for the day!' },
+  { n: 35, s: 'Br', name: 'Bromine', mass: 79.904, cat: 'halogen', row: 4, col: 17, danger: 4, emoji: '🌊',
+    desc: 'One of only two elements that is liquid at room temperature. Deep red and stinky.',
+    uses: 'Hot tub disinfectant, flame retardants, and old-fashioned photo film.',
+    fact: 'Bromine smells so bad its name comes from the Greek word for stench.' },
+  { n: 36, s: 'Kr', name: 'Krypton', mass: 83.798, cat: 'noble', row: 4, col: 18, danger: 1, emoji: '💡',
+    desc: 'A noble gas, but real krypton does not weaken superheroes. Sorry, Superman!',
+    uses: 'Bright high-performance light bulbs, lasers, and energy-saving windows.',
+    fact: 'Until 1983, the official length of one meter was defined using krypton light!' },
+  { n: 37, s: 'Rb', name: 'Rubidium', mass: 85.468, cat: 'alkali', row: 5, col: 1, danger: 4, emoji: '⏰',
+    desc: 'Bursts into purple-pink flames in water. Used in super-precise atomic clocks.',
+    uses: 'Atomic clocks, GPS satellites, and special photography equipment.',
+    fact: 'Rubidium atomic clocks are so accurate they would lose only one second in 100,000 years!' },
+  { n: 38, s: 'Sr', name: 'Strontium', mass: 87.62, cat: 'alkaline', row: 5, col: 2, danger: 3, emoji: '🎆',
+    desc: 'The element that makes fireworks burn bright red and emergency flares glow.',
+    uses: 'Red fireworks, glow-in-the-dark paint, and old TV picture tubes.',
+    fact: 'Glow-in-the-dark stickers and toys often contain harmless strontium compounds!' },
+  { n: 39, s: 'Y', name: 'Yttrium', mass: 88.906, cat: 'transition', row: 5, col: 3, danger: 2, emoji: '🔴',
+    desc: 'Helped create the first laser ever and makes the red color in old TV screens.',
+    uses: 'Lasers, LEDs, ceramics, and superconductors.',
+    fact: 'The first ruby laser ever built used yttrium back in 1960!' },
+  { n: 40, s: 'Zr', name: 'Zirconium', mass: 91.224, cat: 'transition', row: 5, col: 4, danger: 2, emoji: '💍',
+    desc: 'Cubic zirconia is the famous fake diamond made from this metal.',
+    uses: 'Fake diamonds, nuclear reactor parts, dental crowns, and surgery tools.',
+    fact: 'Cubic zirconia looks SO much like real diamond it is hard to tell apart!' },
+  { n: 41, s: 'Nb', name: 'Niobium', mass: 92.906, cat: 'transition', row: 5, col: 5, danger: 2, emoji: '💎',
+    desc: 'Makes superconductor magnets so powerful they can levitate trains.',
+    uses: 'MRI machines, superconductor wires, jet engines, and rainbow-colored jewelry.',
+    fact: 'Niobium can be heated to make jewelry in every color of the rainbow without paint!' },
+  { n: 42, s: 'Mo', name: 'Molybdenum', mass: 95.95, cat: 'transition', row: 5, col: 6, danger: 2, emoji: '⚙️',
+    desc: 'Makes steel incredibly tough and heat-resistant. Try saying its name fast!',
+    uses: 'Tank armor, jet engines, light bulb filaments, and bicycle gears.',
+    fact: 'Molybdenum keeps its strength even at temperatures over 3,500°F!' },
+  { n: 43, s: 'Tc', name: 'Technetium', mass: 98, cat: 'transition', row: 5, col: 7, danger: 4, emoji: '🏥',
+    desc: 'The first element ever created in a lab! Radioactive and rare.',
+    uses: 'Medical scans to find tumors and check how organs are working.',
+    fact: 'Every day, doctors use technetium in over 30,000 medical scans worldwide!' },
+  { n: 44, s: 'Ru', name: 'Ruthenium', mass: 101.07, cat: 'transition', row: 5, col: 8, danger: 2, emoji: '💾',
+    desc: 'A rare hard metal that makes other metals super strong and shiny.',
+    uses: 'Computer hard drives, fancy fountain pen tips, and solar cells.',
+    fact: 'Adding just 0.1% ruthenium to titanium makes it 100 times more rust-proof!' },
+  { n: 45, s: 'Rh', name: 'Rhodium', mass: 102.91, cat: 'transition', row: 5, col: 9, danger: 2, emoji: '✨',
+    desc: 'Possibly the most expensive metal in the world! More valuable than gold.',
+    uses: 'Catalytic converters in cars, white gold jewelry plating, and mirrors.',
+    fact: 'Rhodium can be 10 times more expensive than gold per ounce!' },
+  { n: 46, s: 'Pd', name: 'Palladium', mass: 106.42, cat: 'transition', row: 5, col: 10, danger: 2, emoji: '🚗',
+    desc: 'Cleans car exhaust to make air healthier. Worth more than gold sometimes.',
+    uses: 'Catalytic converters, dentist crowns, jewelry, and electronics.',
+    fact: 'Palladium can absorb 900 times its own volume of hydrogen gas like a sponge!' },
+  { n: 47, s: 'Ag', name: 'Silver', mass: 107.87, cat: 'transition', row: 5, col: 11, danger: 1, emoji: '🥈',
+    desc: 'The shiniest metal of them all. Conducts electricity better than copper.',
+    uses: 'Jewelry, mirrors, antibacterial bandages, and Olympic silver medals.',
+    fact: 'Silver kills bacteria, which is why it has been used in medicine for thousands of years!' },
+  { n: 48, s: 'Cd', name: 'Cadmium', mass: 112.41, cat: 'transition', row: 5, col: 12, danger: 5, emoji: '🎨',
+    desc: 'Makes amazing yellow and red paint colors but is super toxic. Be careful!',
+    uses: 'Rechargeable batteries, bright art paints, and rust-proof coatings.',
+    fact: 'Vincent van Gogh used cadmium yellow in his famous Sunflowers paintings!' },
+  { n: 49, s: 'In', name: 'Indium', mass: 114.82, cat: 'post-transition', row: 5, col: 13, danger: 2, emoji: '📱',
+    desc: 'A soft metal that makes touchscreens work. You touch it every day!',
+    uses: 'Smartphone touchscreens, TVs, solar panels, and special mirrors.',
+    fact: 'Without indium, your touchscreen would not respond to your finger!' },
+  { n: 50, s: 'Sn', name: 'Tin', mass: 118.71, cat: 'post-transition', row: 5, col: 14, danger: 1, emoji: '🥫',
+    desc: 'Makes a creepy crying sound when you bend it. Coats steel cans.',
+    uses: 'Tin cans, solder for electronics, pewter mugs, and bronze.',
+    fact: 'When you bend a bar of pure tin, it screams! It is called the tin cry.' },
+  { n: 51, s: 'Sb', name: 'Antimony', mass: 121.76, cat: 'metalloid', row: 5, col: 15, danger: 4, emoji: '🛡️',
+    desc: 'Used since ancient Egypt for eye makeup. Now it stops things from catching fire.',
+    uses: 'Flame retardants in furniture, batteries, and ancient Egyptian eyeliner.',
+    fact: 'Cleopatra wore antimony eyeliner over 2,000 years ago!' },
+  { n: 52, s: 'Te', name: 'Tellurium', mass: 127.60, cat: 'metalloid', row: 5, col: 16, danger: 3, emoji: '😷',
+    desc: 'Even tiny amounts make you smell like garlic for weeks. Yikes!',
+    uses: 'Solar panels, recordable DVDs, and rust-proof steel coatings.',
+    fact: 'A speck of tellurium in your lab coat will make you reek of garlic for over a month!' },
+  { n: 53, s: 'I', name: 'Iodine', mass: 126.90, cat: 'halogen', row: 5, col: 17, danger: 3, emoji: '🩹',
+    desc: 'A purple-black solid that turns into purple gas. Your body needs it!',
+    uses: 'Disinfecting wounds, table salt (iodized), and medical scans.',
+    fact: 'Iodine sublimes, meaning it skips being a liquid and goes straight from solid to purple gas!' },
+  { n: 54, s: 'Xe', name: 'Xenon', mass: 131.29, cat: 'noble', row: 5, col: 18, danger: 1, emoji: '💡',
+    desc: 'A noble gas that creates super-bright light, like in lighthouse beacons.',
+    uses: 'Bright car headlights, ion engines for spacecraft, and movie projectors.',
+    fact: 'NASA spacecraft like Hayabusa use xenon ion engines to fly through deep space!' },
+  { n: 55, s: 'Cs', name: 'Cesium', mass: 132.91, cat: 'alkali', row: 6, col: 1, danger: 5, emoji: '⏰',
+    desc: 'Explodes powerfully even in cold water or ice. Used in the most accurate clocks ever made.',
+    uses: 'Atomic clocks (the world standard for time), GPS, and oil drilling.',
+    fact: 'The official second is defined by exactly 9,192,631,770 vibrations of a cesium atom!' },
+  { n: 56, s: 'Ba', name: 'Barium', mass: 137.33, cat: 'alkaline', row: 6, col: 2, danger: 4, emoji: '🎆',
+    desc: 'Burns bright green in fireworks. Doctors use special safe forms in stomach X-rays.',
+    uses: 'Green fireworks, X-ray imaging, drilling fluids, and old TV screens.',
+    fact: 'Bright green fireworks always contain barium!' },
+  { n: 57, s: 'La', name: 'Lanthanum', mass: 138.91, cat: 'lanthanide', row: 9, col: 4, danger: 2, emoji: '🔬',
+    desc: 'The first of the lanthanides, a mysterious row of rare earth elements.',
+    uses: 'Camera lenses, hybrid car batteries, and movie studio lighting.',
+    fact: 'A Toyota Prius battery contains over 20 pounds of lanthanum!' },
+  { n: 58, s: 'Ce', name: 'Cerium', mass: 140.12, cat: 'lanthanide', row: 9, col: 5, danger: 2, emoji: '🔥',
+    desc: 'Sparks when scratched! Used in flint for old-school lighters.',
+    uses: 'Lighter flints, self-cleaning ovens, and polishing glass.',
+    fact: 'Every time you flick a lighter, cerium sparks ignite the fuel!' },
+  { n: 59, s: 'Pr', name: 'Praseodymium', mass: 140.91, cat: 'lanthanide', row: 9, col: 6, danger: 2, emoji: '🥽',
+    desc: 'Makes welder goggles dark green to protect eyes from blinding sparks.',
+    uses: 'Welding goggles, strong magnets, and fancy yellow glass.',
+    fact: 'Welders look through praseodymium glass to safely watch metal melt at 5,000°F!' },
+  { n: 60, s: 'Nd', name: 'Neodymium', mass: 144.24, cat: 'lanthanide', row: 9, col: 7, danger: 2, emoji: '🧲',
+    desc: 'Makes the strongest magnets on Earth! Tiny but ridiculously powerful.',
+    uses: 'Headphones, hard drives, electric motors, and refrigerator magnets.',
+    fact: 'A neodymium magnet smaller than a coin can lift over 30 pounds!' },
+  { n: 61, s: 'Pm', name: 'Promethium', mass: 145, cat: 'lanthanide', row: 9, col: 8, danger: 4, emoji: '☢️',
+    desc: 'A radioactive lanthanide that does not exist naturally on Earth anymore.',
+    uses: 'Glow-in-the-dark watch dials and tiny nuclear batteries.',
+    fact: 'Promethium is named after Prometheus, the Greek titan who stole fire!' },
+  { n: 62, s: 'Sm', name: 'Samarium', mass: 150.36, cat: 'lanthanide', row: 9, col: 9, danger: 2, emoji: '🎧',
+    desc: 'Makes powerful magnets that work even when crazy hot.',
+    uses: 'Headphones, missile guidance, and stage lighting.',
+    fact: 'Samarium magnets keep working at temperatures that would destroy other magnets!' },
+  { n: 63, s: 'Eu', name: 'Europium', mass: 151.96, cat: 'lanthanide', row: 9, col: 10, danger: 2, emoji: '💶',
+    desc: 'Makes the red glow in TV screens and the security strips in money.',
+    uses: 'TV screens, anti-counterfeit money, and glow-in-the-dark paints.',
+    fact: 'Europium is the secret in Euro banknotes that makes them glow under UV light!' },
+  { n: 64, s: 'Gd', name: 'Gadolinium', mass: 157.25, cat: 'lanthanide', row: 9, col: 11, danger: 3, emoji: '🏥',
+    desc: 'Helps doctors see inside your body during MRI scans.',
+    uses: 'MRI contrast injections, microwave ovens, and computer memory.',
+    fact: 'Gadolinium has the most magnetic atoms of any element on the table!' },
+  { n: 65, s: 'Tb', name: 'Terbium', mass: 158.93, cat: 'lanthanide', row: 9, col: 12, danger: 2, emoji: '💚',
+    desc: 'Makes the bright green color you see in TV screens and phone displays.',
+    uses: 'TV displays, fluorescent lights, and military sonar.',
+    fact: 'When you watch green pixels on a TV, terbium is glowing back at you!' },
+  { n: 66, s: 'Dy', name: 'Dysprosium', mass: 162.50, cat: 'lanthanide', row: 9, col: 13, danger: 2, emoji: '💨',
+    desc: 'Makes wind turbines spin and electric cars run efficiently.',
+    uses: 'Wind turbine magnets, electric car motors, and lasers.',
+    fact: 'Each big wind turbine needs about 600 pounds of dysprosium magnets!' },
+  { n: 67, s: 'Ho', name: 'Holmium', mass: 164.93, cat: 'lanthanide', row: 9, col: 14, danger: 2, emoji: '🧲',
+    desc: 'Has the strongest magnetism of any element when really cold.',
+    uses: 'Surgical lasers (especially for kidney stones) and super magnets.',
+    fact: 'Doctors use holmium lasers to break up kidney stones without surgery!' },
+  { n: 68, s: 'Er', name: 'Erbium', mass: 167.26, cat: 'lanthanide', row: 9, col: 15, danger: 2, emoji: '🌐',
+    desc: 'Helps your internet travel through fiber-optic cables across oceans.',
+    uses: 'Fiber optic internet cables, sunglasses tints, and dental lasers.',
+    fact: 'Every time you stream a video, light is being amplified by erbium under the ocean!' },
+  { n: 69, s: 'Tm', name: 'Thulium', mass: 168.93, cat: 'lanthanide', row: 9, col: 16, danger: 2, emoji: '💎',
+    desc: 'One of the rarest elements on Earth. Glows blue under UV light.',
+    uses: 'Portable X-ray machines, lasers, and money security features.',
+    fact: 'Thulium is so rare that getting one ounce of pure thulium costs thousands of dollars!' },
+  { n: 70, s: 'Yb', name: 'Ytterbium', mass: 173.05, cat: 'lanthanide', row: 9, col: 17, danger: 2, emoji: '⏰',
+    desc: 'Used in some of the most precise atomic clocks ever built.',
+    uses: 'Atomic clocks, lasers, and stainless steel hardening.',
+    fact: 'A ytterbium clock is so accurate it loses less than 1 second every 14 billion years!' },
+  { n: 71, s: 'Lu', name: 'Lutetium', mass: 174.97, cat: 'lanthanide', row: 9, col: 18, danger: 2, emoji: '🛢️',
+    desc: 'The last lanthanide and one of the most expensive metals.',
+    uses: 'Oil refining catalysts, cancer treatments, and PET medical scans.',
+    fact: 'Lutetium is so expensive scientists usually study it in tiny amounts!' },
+  { n: 72, s: 'Hf', name: 'Hafnium', mass: 178.49, cat: 'transition', row: 6, col: 4, danger: 2, emoji: '⚛️',
+    desc: 'Helps control nuclear reactors. Was hidden inside zirconium for years.',
+    uses: 'Nuclear submarines, computer chips, and high-temp ceramics.',
+    fact: 'Hafnium and zirconium are like twins, scientists could not separate them for years!' },
+  { n: 73, s: 'Ta', name: 'Tantalum', mass: 180.95, cat: 'transition', row: 6, col: 5, danger: 2, emoji: '📱',
+    desc: 'Inside almost every phone! Stores energy in tiny capacitors.',
+    uses: 'Phone capacitors, lab equipment, and surgical implants.',
+    fact: 'Without tantalum, your smartphone would be the size of a brick!' },
+  { n: 74, s: 'W', name: 'Tungsten', mass: 183.84, cat: 'transition', row: 6, col: 6, danger: 2, emoji: '💡',
+    desc: 'Has the highest melting point of any metal: 6,177°F! Old light bulb wires.',
+    uses: 'Light bulb filaments, drill bits, and rocket nozzles.',
+    fact: 'You could put tungsten in lava and it would not even start to melt!' },
+  { n: 75, s: 'Re', name: 'Rhenium', mass: 186.21, cat: 'transition', row: 6, col: 7, danger: 2, emoji: '🚀',
+    desc: 'One of the rarest elements in Earth crust. Powers jet engines.',
+    uses: 'Jet engine blades, oven thermometers, and oil refining.',
+    fact: 'Rhenium was the last stable element discovered on Earth, way back in 1925!' },
+  { n: 76, s: 'Os', name: 'Osmium', mass: 190.23, cat: 'transition', row: 6, col: 8, danger: 3, emoji: '⚖️',
+    desc: 'The densest natural element. A baseball-sized chunk weighs 11 pounds!',
+    uses: 'Fancy fountain pen tips, electrical contacts, and microscope needles.',
+    fact: 'Osmium is twice as dense as lead and the heaviest metal you can hold!' },
+  { n: 77, s: 'Ir', name: 'Iridium', mass: 192.22, cat: 'transition', row: 6, col: 9, danger: 1, emoji: '☄️',
+    desc: 'Almost as dense as osmium. A meteor wiped out the dinosaurs and left iridium clues!',
+    uses: 'Spark plugs, satellite parts, fancy pen tips, and meteor research.',
+    fact: 'Scientists found tons of iridium in the layer where dinosaur fossils stop, proving an asteroid hit Earth!' },
+  { n: 78, s: 'Pt', name: 'Platinum', mass: 195.08, cat: 'transition', row: 6, col: 10, danger: 1, emoji: '💍',
+    desc: 'Even more valuable than gold! Used in fancy jewelry and car exhaust cleaners.',
+    uses: 'Wedding rings, catalytic converters, lab equipment, and cancer drugs.',
+    fact: 'Platinum is so dense that an Olympic-pool-sized container would weigh more than a battleship!' },
+  { n: 79, s: 'Au', name: 'Gold', mass: 196.97, cat: 'transition', row: 6, col: 11, danger: 1, emoji: '🏆',
+    desc: 'The most famous metal of all. Never tarnishes, never rusts, always shiny.',
+    uses: 'Jewelry, electronics, dentistry, and astronaut helmet visors.',
+    fact: 'Astronaut helmet visors have a layer of gold thinner than a human hair!' },
+  { n: 80, s: 'Hg', name: 'Mercury', mass: 200.59, cat: 'transition', row: 6, col: 12, danger: 5, emoji: '🌡️',
+    desc: 'The only metal that is liquid at room temperature. Beautiful but very poisonous.',
+    uses: 'Old thermometers, fluorescent lights, and barometers (mostly being phased out).',
+    fact: 'Mad Hatter from Alice in Wonderland was based on real hat makers poisoned by mercury!' },
+  { n: 81, s: 'Tl', name: 'Thallium', mass: 204.38, cat: 'post-transition', row: 6, col: 13, danger: 5, emoji: '☠️',
+    desc: 'Once used as rat poison. Tasteless and odorless, which made it scary.',
+    uses: 'Specialized lenses, infrared detectors, and (rarely) heart scans.',
+    fact: 'Thallium poisoning was once called the poisoners poison because it was so hard to detect.' },
+  { n: 82, s: 'Pb', name: 'Lead', mass: 207.2, cat: 'post-transition', row: 6, col: 14, danger: 4, emoji: '🔋',
+    desc: 'Heavy, soft, and toxic. The Romans used it for plumbing and got sick from it.',
+    uses: 'Car batteries, X-ray shielding, and bullets.',
+    fact: 'The dentist x-ray apron is made with lead because it blocks radiation!' },
+  { n: 83, s: 'Bi', name: 'Bismuth', mass: 208.98, cat: 'post-transition', row: 6, col: 15, danger: 2, emoji: '🌈',
+    desc: 'Forms unbelievably cool rainbow staircase crystals! The least toxic heavy metal.',
+    uses: 'Stomach medicines (Pepto-Bismol), low-melting alloys, and lead-free shotgun pellets.',
+    fact: 'Bismuth crystals look like tiny rainbow castles built by a robot wizard!' },
+  { n: 84, s: 'Po', name: 'Polonium', mass: 209, cat: 'post-transition', row: 6, col: 16, danger: 5, emoji: '☢️',
+    desc: 'Unbelievably radioactive. A speck the size of a grain of sand could kill.',
+    uses: 'Anti-static brushes for film and (rarely) nuclear research.',
+    fact: 'Marie Curie discovered polonium and named it after her home country, Poland!' },
+  { n: 85, s: 'At', name: 'Astatine', mass: 210, cat: 'halogen', row: 6, col: 17, danger: 5, emoji: '☢️',
+    desc: 'The rarest natural element on Earth. There is less than a teaspoon of it on the entire planet!',
+    uses: 'Cancer treatment research (in tiny amounts).',
+    fact: 'If you collected ALL the astatine on Earth, it would not even fill a coffee scoop!' },
+  { n: 86, s: 'Rn', name: 'Radon', mass: 222, cat: 'noble', row: 6, col: 18, danger: 5, emoji: '☢️',
+    desc: 'A noble gas that is invisible, odorless, and radioactive. Sneaks into basements.',
+    uses: 'Some cancer treatments and earthquake prediction research.',
+    fact: 'Many homes test for radon because it can leak up from rocks under the basement!' },
+  { n: 87, s: 'Fr', name: 'Francium', mass: 223, cat: 'alkali', row: 7, col: 1, danger: 5, emoji: '☢️',
+    desc: 'Probably the most reactive element. So rare you can never see a chunk of it.',
+    uses: 'Pure scientific research only, you cannot really use it for anything.',
+    fact: 'Only about an ounce of francium exists on the entire Earth at any given moment!' },
+  { n: 88, s: 'Ra', name: 'Radium', mass: 226, cat: 'alkaline', row: 7, col: 2, danger: 5, emoji: '☢️',
+    desc: 'Glows in the dark! Was once put in toothpaste and watches before people knew it caused cancer.',
+    uses: 'Now mostly outdated, but once used in glow-in-the-dark watch dials.',
+    fact: 'In the 1920s, women painted watch faces with radium and tragically got sick. It changed worker safety laws forever.' },
+  { n: 89, s: 'Ac', name: 'Actinium', mass: 227, cat: 'actinide', row: 10, col: 4, danger: 5, emoji: '☢️',
+    desc: 'Glows pale blue in the dark from its own radioactivity. The first actinide!',
+    uses: 'Cancer treatment research and neutron source for science.',
+    fact: 'Actinium glows blue because it is so radioactive it makes the air around it light up!' },
+  { n: 90, s: 'Th', name: 'Thorium', mass: 232.04, cat: 'actinide', row: 10, col: 5, danger: 4, emoji: '🌙',
+    desc: 'Named after Thor, the Norse god of thunder. Could be a future clean nuclear fuel.',
+    uses: 'Future nuclear reactors, old camping lantern mantles, and welding rods.',
+    fact: 'Thorium nuclear reactors could one day make safe, clean energy with very little waste!' },
+  { n: 91, s: 'Pa', name: 'Protactinium', mass: 231.04, cat: 'actinide', row: 10, col: 6, danger: 5, emoji: '☢️',
+    desc: 'One of the rarest, most expensive natural elements. Almost no everyday uses.',
+    uses: 'Pure scientific research and dating very old ocean sediments.',
+    fact: 'Scientists once spent years extracting just a few grams of protactinium from tons of ore!' },
+  { n: 92, s: 'U', name: 'Uranium', mass: 238.03, cat: 'actinide', row: 10, col: 7, danger: 5, emoji: '☢️',
+    desc: 'The fuel that powers nuclear power plants and submarines.',
+    uses: 'Nuclear power plants, submarines, and (sadly) nuclear weapons.',
+    fact: 'A uranium fuel pellet the size of a fingertip has the energy of a ton of coal!' },
+  { n: 93, s: 'Np', name: 'Neptunium', mass: 237, cat: 'actinide', row: 10, col: 8, danger: 5, emoji: '🌌',
+    desc: 'Named after the planet Neptune. The first element made by humans after uranium.',
+    uses: 'Neutron detectors and small amounts of plutonium production.',
+    fact: 'Neptunium was discovered in 1940 and named after the planet beyond uranium-named Uranus!' },
+  { n: 94, s: 'Pu', name: 'Plutonium', mass: 244, cat: 'actinide', row: 10, col: 9, danger: 5, emoji: '🚀',
+    desc: 'Powers spacecraft going to deep space! Also extremely dangerous.',
+    uses: 'Powers Mars rovers, Voyager probes, and (sadly) some nuclear weapons.',
+    fact: 'The Voyager spacecraft is still sending us data from interstellar space using plutonium power!' },
+  { n: 95, s: 'Am', name: 'Americium', mass: 243, cat: 'actinide', row: 10, col: 10, danger: 5, emoji: '🚨',
+    desc: 'Inside almost every smoke detector in your house!',
+    uses: 'Smoke alarms (in extremely tiny amounts), and oil well measurements.',
+    fact: 'A typical smoke detector has 1/5000th of a gram of americium, totally safe behind its cover!' },
+  { n: 96, s: 'Cm', name: 'Curium', mass: 247, cat: 'actinide', row: 10, col: 11, danger: 5, emoji: '👩‍🔬',
+    desc: 'Named after Marie and Pierre Curie, the famous radiation researchers.',
+    uses: 'Powers Mars rovers and helps doctors fight cancer.',
+    fact: 'The Mars rover Curiosity uses curium to scan rocks for chemicals!' },
+  { n: 97, s: 'Bk', name: 'Berkelium', mass: 247, cat: 'actinide', row: 10, col: 12, danger: 5, emoji: '🔬',
+    desc: 'Named after Berkeley, California, where it was first made in a lab.',
+    uses: 'Used to create even heavier elements in physics labs.',
+    fact: 'Less than 1 gram of berkelium has ever been made in human history!' },
+  { n: 98, s: 'Cf', name: 'Californium', mass: 251, cat: 'actinide', row: 10, col: 13, danger: 5, emoji: '🌟',
+    desc: 'One gram costs about $27 million! Powerful neutron source.',
+    uses: 'Cancer treatment, finding gold and oil deposits, and starting nuclear reactors.',
+    fact: 'A tiny pellet of californium can detect water inside oil wells thousands of feet underground!' },
+  { n: 99, s: 'Es', name: 'Einsteinium', mass: 252, cat: 'actinide', row: 10, col: 14, danger: 5, emoji: '🧠',
+    desc: 'Named after Albert Einstein! Discovered in the debris of a hydrogen bomb test.',
+    uses: 'Pure scientific research only.',
+    fact: 'Einsteinium glows blue all on its own because it is so super radioactive!' },
+  { n: 100, s: 'Fm', name: 'Fermium', mass: 257, cat: 'actinide', row: 10, col: 15, danger: 5, emoji: '⚛️',
+    desc: 'Named after Enrico Fermi, who built the first nuclear reactor.',
+    uses: 'Pure scientific research only.',
+    fact: 'Element 100 was discovered after the first hydrogen bomb test in 1952!' },
+  { n: 101, s: 'Md', name: 'Mendelevium', mass: 258, cat: 'actinide', row: 10, col: 16, danger: 5, emoji: '📊',
+    desc: 'Named after Dmitri Mendeleev, who invented the periodic table itself!',
+    uses: 'Pure scientific research, only made in microscopic amounts.',
+    fact: 'Only 17 atoms of mendelevium were made the first time scientists created it!' },
+  { n: 102, s: 'No', name: 'Nobelium', mass: 259, cat: 'actinide', row: 10, col: 17, danger: 5, emoji: '🏅',
+    desc: 'Named after Alfred Nobel, the inventor of dynamite and the Nobel Prize.',
+    uses: 'Pure scientific research, exists for only minutes.',
+    fact: 'A nobelium atom only exists for about 58 minutes before it disappears!' },
+  { n: 103, s: 'Lr', name: 'Lawrencium', mass: 266, cat: 'actinide', row: 10, col: 18, danger: 5, emoji: '🔬',
+    desc: 'The last actinide. Named after Ernest Lawrence, inventor of the cyclotron.',
+    uses: 'Pure research only, atoms exist for just seconds.',
+    fact: 'Lawrencium atoms only stick around for about 11 hours at most before decaying!' },
+  { n: 104, s: 'Rf', name: 'Rutherfordium', mass: 267, cat: 'transition', row: 7, col: 4, danger: 5, emoji: '⚡',
+    desc: 'Named after Ernest Rutherford, who first discovered atoms have a nucleus.',
+    uses: 'Pure research only.',
+    fact: 'Rutherfordium atoms exist for only about a minute and a half before falling apart!' },
+  { n: 105, s: 'Db', name: 'Dubnium', mass: 268, cat: 'transition', row: 7, col: 5, danger: 5, emoji: '🔬',
+    desc: 'Named after Dubna, Russia, where lots of new elements are discovered.',
+    uses: 'Pure scientific research.',
+    fact: 'Russia and the US argued for years over who should get to name this element!' },
+  { n: 106, s: 'Sg', name: 'Seaborgium', mass: 269, cat: 'transition', row: 7, col: 6, danger: 5, emoji: '👨‍🔬',
+    desc: 'Named after Glenn Seaborg, the only person alive when an element was named for him!',
+    uses: 'Pure research only.',
+    fact: 'Glenn Seaborg could literally mail letters to himself at his element address: 106!' },
+  { n: 107, s: 'Bh', name: 'Bohrium', mass: 270, cat: 'transition', row: 7, col: 7, danger: 5, emoji: '⚛️',
+    desc: 'Named after Niels Bohr, who figured out how electrons orbit atoms.',
+    uses: 'Pure scientific research.',
+    fact: 'Bohrium atoms last about 61 seconds, just enough for scientists to study them!' },
+  { n: 108, s: 'Hs', name: 'Hassium', mass: 277, cat: 'transition', row: 7, col: 8, danger: 5, emoji: '🇩🇪',
+    desc: 'Named after Hesse, Germany, where it was discovered. Super short-lived.',
+    uses: 'Pure research only.',
+    fact: 'Only a handful of hassium atoms have ever been created in all of history!' },
+  { n: 109, s: 'Mt', name: 'Meitnerium', mass: 278, cat: 'transition', row: 7, col: 9, danger: 5, emoji: '👩‍🔬',
+    desc: 'Named after Lise Meitner, who helped discover nuclear fission.',
+    uses: 'Pure scientific research only.',
+    fact: 'Lise Meitner was passed over for a Nobel Prize, but she got an element instead!' },
+  { n: 110, s: 'Ds', name: 'Darmstadtium', mass: 281, cat: 'transition', row: 7, col: 10, danger: 5, emoji: '🇩🇪',
+    desc: 'Named after Darmstadt, Germany. Each atom exists for only milliseconds.',
+    uses: 'Pure research only.',
+    fact: 'A darmstadtium atom appears and disappears 100 times faster than you can blink!' },
+  { n: 111, s: 'Rg', name: 'Roentgenium', mass: 282, cat: 'transition', row: 7, col: 11, danger: 5, emoji: '☢️',
+    desc: 'Named after Wilhelm Roentgen, who discovered X-rays.',
+    uses: 'Pure scientific research.',
+    fact: 'Element 111 honors the man whose discovery lets doctors see through your skin!' },
+  { n: 112, s: 'Cn', name: 'Copernicium', mass: 285, cat: 'transition', row: 7, col: 12, danger: 5, emoji: '🌍',
+    desc: 'Named after Copernicus, who proved Earth orbits the Sun.',
+    uses: 'Pure research only.',
+    fact: 'Copernicium might actually be a liquid metal at room temperature, like mercury!' },
+  { n: 113, s: 'Nh', name: 'Nihonium', mass: 286, cat: 'post-transition', row: 7, col: 13, danger: 5, emoji: '🇯🇵',
+    desc: 'The first element discovered in Japan! Nihon means Japan in Japanese.',
+    uses: 'Pure scientific research.',
+    fact: 'Nihonium is the first element ever named after a country in Asia!' },
+  { n: 114, s: 'Fl', name: 'Flerovium', mass: 289, cat: 'post-transition', row: 7, col: 14, danger: 5, emoji: '🔬',
+    desc: 'Named after a Russian physics lab. Could be a noble gas, scientists are not sure!',
+    uses: 'Pure research only.',
+    fact: 'Flerovium might behave like a noble gas, even though it sits next to lead on the table!' },
+  { n: 115, s: 'Mc', name: 'Moscovium', mass: 290, cat: 'post-transition', row: 7, col: 15, danger: 5, emoji: '🇷🇺',
+    desc: 'Named after Moscow, Russia. Atoms exist for less than a second.',
+    uses: 'Pure scientific research.',
+    fact: 'Moscovium was officially named in 2016 after years of being called by a placeholder name!' },
+  { n: 116, s: 'Lv', name: 'Livermorium', mass: 293, cat: 'post-transition', row: 7, col: 16, danger: 5, emoji: '🔬',
+    desc: 'Named after Lawrence Livermore National Lab in California.',
+    uses: 'Pure research only, atoms exist for milliseconds.',
+    fact: 'Only a few atoms of livermorium have ever existed in the entire universe (that we know of)!' },
+  { n: 117, s: 'Ts', name: 'Tennessine', mass: 294, cat: 'halogen', row: 7, col: 17, danger: 5, emoji: '🇺🇸',
+    desc: 'Named after Tennessee in the USA. The newest halogen on the periodic table.',
+    uses: 'Pure scientific research only.',
+    fact: 'Tennessine was officially added to the periodic table in 2016, super recent!' },
+  { n: 118, s: 'Og', name: 'Oganesson', mass: 294, cat: 'noble', row: 7, col: 18, danger: 5, emoji: '👑',
+    desc: 'The newest and heaviest element ever made. Named after a living scientist!',
+    uses: 'Pure research, only a few atoms have ever existed.',
+    fact: 'Yuri Oganessian is one of only two people in history to have an element named after them while alive!' },
+];
+
+/* =========================================================================
+   Category styles
+   ========================================================================= */
+const CATEGORIES = {
+  alkali:           { label: 'Alkali Metal',         tile: 'from-rose-500 to-red-600',        glow: 'rgba(244,63,94,0.5)',   text: 'text-rose-200' },
+  alkaline:         { label: 'Alkaline Earth',       tile: 'from-orange-500 to-amber-600',    glow: 'rgba(249,115,22,0.5)',  text: 'text-orange-200' },
+  transition:       { label: 'Transition Metal',     tile: 'from-sky-500 to-blue-600',        glow: 'rgba(14,165,233,0.5)',  text: 'text-sky-200' },
+  'post-transition':{ label: 'Post-Transition',      tile: 'from-emerald-500 to-green-600',   glow: 'rgba(16,185,129,0.5)',  text: 'text-emerald-200' },
+  metalloid:        { label: 'Metalloid',            tile: 'from-teal-500 to-cyan-600',       glow: 'rgba(20,184,166,0.5)',  text: 'text-teal-200' },
+  nonmetal:         { label: 'Nonmetal',             tile: 'from-yellow-400 to-amber-500',    glow: 'rgba(250,204,21,0.55)', text: 'text-yellow-200' },
+  halogen:          { label: 'Halogen',              tile: 'from-lime-400 to-green-500',      glow: 'rgba(132,204,22,0.55)', text: 'text-lime-200' },
+  noble:            { label: 'Noble Gas',            tile: 'from-fuchsia-500 to-purple-600',  glow: 'rgba(217,70,239,0.55)', text: 'text-fuchsia-200' },
+  lanthanide:       { label: 'Lanthanide',           tile: 'from-pink-500 to-rose-500',       glow: 'rgba(236,72,153,0.5)',  text: 'text-pink-200' },
+  actinide:         { label: 'Actinide',             tile: 'from-fuchsia-600 to-pink-700',    glow: 'rgba(192,38,211,0.55)', text: 'text-pink-200' },
+};
+
+const DANGER_INFO = [
+  null,
+  { label: 'Safe',         color: 'text-emerald-400', icon: Shield,        bg: 'bg-emerald-500/15 border-emerald-400/40' },
+  { label: 'Mostly Safe',  color: 'text-lime-400',    icon: Shield,        bg: 'bg-lime-500/15 border-lime-400/40' },
+  { label: 'Be Careful',   color: 'text-yellow-400',  icon: AlertTriangle, bg: 'bg-yellow-500/15 border-yellow-400/40' },
+  { label: 'Dangerous',    color: 'text-orange-400',  icon: Flame,         bg: 'bg-orange-500/15 border-orange-400/40' },
+  { label: 'EXTREME',      color: 'text-red-400',     icon: Skull,         bg: 'bg-red-500/15 border-red-400/40' },
+];
+
+/* =========================================================================
+   Achievements
+   ========================================================================= */
+const ACHIEVEMENTS = [
+  { id: 'first',         name: 'First Spark',          desc: 'Discover your first element',     icon: Sparkles,   check: s => s.discovered.size >= 1 },
+  { id: 'ten',           name: 'Curious Mind',         desc: 'Discover 10 elements',            icon: Brain,      check: s => s.discovered.size >= 10 },
+  { id: 'fifty',         name: 'Element Explorer',     desc: 'Discover 50 elements',            icon: Microscope, check: s => s.discovered.size >= 50 },
+  { id: 'hundred',       name: 'Atomic Adventurer',    desc: 'Discover 100 elements',           icon: Atom,       check: s => s.discovered.size >= 100 },
+  { id: 'all',           name: 'Periodic Master',      desc: 'Discover all 118 elements',       icon: Crown,      check: s => s.discovered.size >= 118 },
+  { id: 'noble',         name: 'Royal Treatment',      desc: 'Find every noble gas',            icon: Star,       check: s => ELEMENTS.filter(e=>e.cat==='noble').every(e=>s.discovered.has(e.n)) },
+  { id: 'alkali',        name: 'Reactive Rebel',       desc: 'Find every alkali metal',         icon: Flame,      check: s => ELEMENTS.filter(e=>e.cat==='alkali').every(e=>s.discovered.has(e.n)) },
+  { id: 'halogen',       name: 'Halogen Hunter',       desc: 'Find every halogen',              icon: Target,     check: s => ELEMENTS.filter(e=>e.cat==='halogen').every(e=>s.discovered.has(e.n)) },
+  { id: 'firstWin',      name: 'Game On',              desc: 'Win your first game',             icon: Trophy,     check: s => s.gamesWon >= 1 },
+  { id: 'fiveWins',      name: 'On a Roll',            desc: 'Win 5 games',                     icon: Zap,        check: s => s.gamesWon >= 5 },
+  { id: 'detective',     name: 'Element Detective',    desc: 'Score 5 in a row in Detective',   icon: Lightbulb,  check: s => s.detectiveStreak >= 5 },
+  { id: 'level5',        name: 'Lab Assistant',        desc: 'Reach Level 5',                   icon: Award,      check: s => Math.floor(s.xp / 100) + 1 >= 5 },
+];
+
+/* =========================================================================
+   Helpers
+   ========================================================================= */
+const xpToLevel = xp => Math.floor(xp / 100) + 1;
+const xpInLevel = xp => xp % 100;
+const rand = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+
+/* =========================================================================
+   Main App
+   ========================================================================= */
+function App() {
+  const [tab, setTab] = useState('table');
+  const [selected, setSelected] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [xp, setXp] = useState(0);
+  const [discovered, setDiscovered] = useState(new Set());
+  const [gamesWon, setGamesWon] = useState(0);
+  const [detectiveStreak, setDetectiveStreak] = useState(0);
+  const [unlockedAchievements, setUnlockedAchievements] = useState(new Set());
+  const [toast, setToast] = useState(null);
+  const [activeGame, setActiveGame] = useState(null);
+  const [xpFloater, setXpFloater] = useState(null);
+
+  const state = { xp, discovered, gamesWon, detectiveStreak };
+  const level = xpToLevel(xp);
+  const lvlPct = xpInLevel(xp);
+
+  // Check achievements after every state change
+  useEffect(() => {
+    ACHIEVEMENTS.forEach(a => {
+      if (!unlockedAchievements.has(a.id) && a.check(state)) {
+        setUnlockedAchievements(prev => new Set(prev).add(a.id));
+        setToast({ kind: 'achievement', name: a.name, desc: a.desc, icon: a.icon });
+        setTimeout(() => setToast(null), 4200);
+      }
+    });
+    // eslint-disable-next-line
+  }, [xp, discovered, gamesWon, detectiveStreak]);
+
+  const grantXp = (amount, reason = '') => {
+    setXp(x => x + amount);
+    setXpFloater({ amount, reason, id: Date.now() });
+    setTimeout(() => setXpFloater(null), 1400);
+  };
+
+  const openElement = el => {
+    setSelected(el);
+    if (!discovered.has(el.n)) {
+      setDiscovered(prev => new Set(prev).add(el.n));
+      grantXp(5, `Discovered ${el.name}!`);
+    }
+  };
+
+  const filteredElements = useMemo(() => {
+    return ELEMENTS.filter(e => {
+      if (filter !== 'all' && e.cat !== filter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return e.name.toLowerCase().includes(q) ||
+               e.s.toLowerCase().includes(q) ||
+               String(e.n).includes(q);
+      }
+      return true;
+    });
+  }, [filter, search]);
+  const filteredSet = useMemo(() => new Set(filteredElements.map(e => e.n)), [filteredElements]);
+
+  return (
+    <div className="min-h-screen w-full text-slate-100 relative overflow-x-hidden font-body">
+      <Style />
+      <BackgroundFx />
+
+      {/* HEADER */}
+      <header className="relative z-10 border-b border-cyan-400/20 bg-slate-950/60 backdrop-blur-xl">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="relative w-12 h-12 grid place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-fuchsia-500 shadow-[0_0_30px_rgba(34,211,238,0.5)]">
+              <Atom className="w-7 h-7 text-slate-900" strokeWidth={2.5} />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
+            <div>
+              <h1 className="font-display text-xl sm:text-2xl tracking-[0.18em] leading-none bg-gradient-to-r from-cyan-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">
+                ATOMIC LAB
+              </h1>
+              <p className="text-[11px] tracking-[0.3em] text-slate-400 mt-1">PERIODIC EXPLORER</p>
+            </div>
+          </div>
+
+          <div className="ml-auto flex items-center gap-3 sm:gap-5 flex-wrap">
+            <Stat icon={Sparkles} label="XP"        value={xp}                color="text-cyan-300" />
+            <Stat icon={Star}     label="Level"     value={level}             color="text-amber-300" />
+            <Stat icon={Beaker}   label="Found"     value={`${discovered.size}/118`} color="text-emerald-300" />
+            <Stat icon={Trophy}   label="Trophies"  value={`${unlockedAchievements.size}/${ACHIEVEMENTS.length}`} color="text-fuchsia-300" />
+          </div>
+        </div>
+
+        {/* Level progress */}
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-3">
+          <div className="h-1.5 rounded-full bg-slate-800/80 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-amber-400 transition-all duration-700"
+                 style={{ width: `${lvlPct}%` }} />
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <nav className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-3 flex gap-2 flex-wrap">
+          {[
+            { id: 'table',  label: 'Periodic Table', icon: Atom },
+            { id: 'games',  label: 'Games',          icon: Target },
+            { id: 'trophy', label: 'Achievements',   icon: Trophy },
+            { id: 'about',  label: 'How To Play',    icon: BookOpen },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => { setTab(t.id); setActiveGame(null); }}
+              className={`group px-4 py-2 rounded-lg flex items-center gap-2 text-sm tracking-wider uppercase transition-all border ${
+                tab === t.id
+                  ? 'bg-cyan-400/15 border-cyan-400/60 text-cyan-200 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+                  : 'border-slate-700/60 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+              }`}>
+              <t.icon className="w-4 h-4" />
+              <span className="font-display text-xs">{t.label}</span>
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      {/* MAIN */}
+      <main className="relative z-10 max-w-[1400px] mx-auto px-2 sm:px-6 py-6">
+        {tab === 'table' && (
+          <TableView
+            filter={filter} setFilter={setFilter}
+            search={search} setSearch={setSearch}
+            elements={filteredElements} filteredSet={filteredSet}
+            allElements={ELEMENTS} discovered={discovered}
+            onSelect={openElement}
+          />
+        )}
+        {tab === 'games' && !activeGame && <GamesHub onStart={setActiveGame} />}
+        {tab === 'games' && activeGame === 'detective' && (
+          <DetectiveGame onExit={() => setActiveGame(null)}
+            grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)}
+            streak={detectiveStreak} setStreak={setDetectiveStreak} />
+        )}
+        {tab === 'games' && activeGame === 'speed' && (
+          <SpeedMatchGame onExit={() => setActiveGame(null)}
+            grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} />
+        )}
+        {tab === 'games' && activeGame === 'mystery' && (
+          <MysteryGame onExit={() => setActiveGame(null)}
+            grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} />
+        )}
+        {tab === 'games' && activeGame === 'memory' && (
+          <MemoryGame onExit={() => setActiveGame(null)}
+            grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} />
+        )}
+        {tab === 'trophy' && (
+          <AchievementsView state={state} unlocked={unlockedAchievements} />
+        )}
+        {tab === 'about' && <AboutView />}
+      </main>
+
+      {/* MODAL */}
+      {selected && <ElementModal el={selected} onClose={() => setSelected(null)} />}
+
+      {/* TOAST */}
+      {toast && <AchievementToast toast={toast} />}
+
+      {/* XP FLOATER */}
+      {xpFloater && (
+        <div key={xpFloater.id}
+             className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] pointer-events-none">
+          <div className="px-4 py-2 rounded-full bg-cyan-500/95 text-slate-900 font-display tracking-wider text-sm shadow-[0_0_30px_rgba(34,211,238,0.7)] animate-xpfloat">
+            +{xpFloater.amount} XP {xpFloater.reason && <span className="opacity-90 normal-case font-body ml-1">{xpFloater.reason}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================================
+   Background atmosphere
+   ========================================================================= */
+function BackgroundFx() {
+  return (
+    <>
+      <div className="fixed inset-0 -z-10 bg-[#070b18]" />
+      <div className="fixed inset-0 -z-10 opacity-60" style={{
+        background: 'radial-gradient(900px 600px at 20% -10%, rgba(34,211,238,0.18), transparent 60%), radial-gradient(900px 700px at 110% 10%, rgba(217,70,239,0.16), transparent 60%), radial-gradient(800px 600px at 50% 130%, rgba(251,191,36,0.10), transparent 60%)'
+      }} />
+      <div className="fixed inset-0 -z-10" style={{
+        backgroundImage: 'linear-gradient(rgba(34,211,238,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.06) 1px, transparent 1px)',
+        backgroundSize: '48px 48px',
+        maskImage: 'radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent)'
+      }} />
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        {Array.from({ length: 30 }).map((_, i) => (
+          <span key={i} className="absolute block rounded-full bg-cyan-300/40 animate-twinkle"
+                style={{
+                  width: `${Math.random() * 3 + 1}px`,
+                  height: `${Math.random() * 3 + 1}px`,
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  animationDuration: `${3 + Math.random() * 4}s`
+                }} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+/* =========================================================================
+   Stat chip
+   ========================================================================= */
+function Stat({ icon: Icon, label, value, color }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-slate-700/60">
+      <Icon className={`w-4 h-4 ${color}`} />
+      <div className="leading-tight">
+        <div className="text-[10px] uppercase tracking-widest text-slate-500">{label}</div>
+        <div className={`font-display text-sm ${color}`}>{value}</div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   Periodic Table view
+   ========================================================================= */
+function TableView({ filter, setFilter, search, setSearch, elements, filteredSet, allElements, discovered, onSelect }) {
+  return (
+    <div>
+      {/* Controls */}
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input type="text" placeholder="Search by name, symbol, or number..."
+                 value={search} onChange={e => setSearch(e.target.value)}
+                 className="w-full pl-10 pr-3 py-2 rounded-lg bg-slate-900/70 border border-slate-700/60 focus:border-cyan-400/60 focus:outline-none text-sm tracking-wide placeholder:text-slate-500" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <FilterPill active={filter==='all'} onClick={()=>setFilter('all')} label="All" />
+          {Object.entries(CATEGORIES).map(([k,v]) => (
+            <FilterPill key={k} active={filter===k} onClick={()=>setFilter(k)} label={v.label} category={k} />
+          ))}
+        </div>
+      </div>
+
+      {/* Periodic Table grid */}
+      <div className="overflow-x-auto pb-4 -mx-2 sm:mx-0">
+        <div className="min-w-[1100px] px-2">
+          <div className="grid gap-[3px]" style={{
+            gridTemplateColumns: 'repeat(18, minmax(0, 1fr))',
+            gridTemplateRows: 'repeat(7, auto) 14px repeat(2, auto)'
+          }}>
+            {allElements.map(el => (
+              <ElementTile
+                key={el.n}
+                el={el}
+                visible={filteredSet.has(el.n)}
+                discovered={discovered.has(el.n)}
+                onClick={() => onSelect(el)}
+              />
+            ))}
+            {/* Lanthanide / Actinide labels */}
+            <div className="col-start-3 row-start-6 grid place-items-center text-[10px] text-pink-300/70 tracking-widest">57-71</div>
+            <div className="col-start-3 row-start-7 grid place-items-center text-[10px] text-fuchsia-300/70 tracking-widest">89-103</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-6 flex flex-wrap gap-2">
+        {Object.entries(CATEGORIES).map(([k, v]) => (
+          <div key={k} className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-900/60 border border-slate-700/50">
+            <span className={`w-3 h-3 rounded bg-gradient-to-br ${v.tile}`} />
+            <span className="text-[11px] tracking-wider text-slate-300">{v.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FilterPill({ active, onClick, label, category }) {
+  const cat = category && CATEGORIES[category];
+  return (
+    <button onClick={onClick}
+      className={`px-2.5 py-1 rounded-md text-[11px] tracking-wider uppercase font-display transition-all border ${
+        active
+          ? 'bg-cyan-400/15 border-cyan-400/60 text-cyan-200'
+          : 'border-slate-700/50 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+      }`}>
+      {cat && <span className={`inline-block w-2 h-2 rounded-sm mr-1.5 align-middle bg-gradient-to-br ${cat.tile}`} />}
+      {label}
+    </button>
+  );
+}
+
+function ElementTile({ el, visible, discovered, onClick }) {
+  const cat = CATEGORIES[el.cat];
+  const isDangerous = el.danger >= 4;
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        gridRow: el.row,
+        gridColumn: el.col,
+        '--glow': cat.glow,
+      }}
+      className={`relative aspect-square rounded-md p-1 sm:p-1.5 text-left group transition-all duration-300 ${
+        visible
+          ? `bg-gradient-to-br ${cat.tile} hover:scale-110 hover:z-20 hover:shadow-[0_0_25px_var(--glow)] cursor-pointer`
+          : 'bg-slate-800/30 grayscale opacity-25 cursor-pointer'
+      } ${discovered ? 'ring-1 ring-white/30' : ''}`}>
+      <div className="flex flex-col h-full justify-between">
+        <div className="flex items-start justify-between leading-none">
+          <span className="font-mono text-[8px] sm:text-[9px] text-white/70">{el.n}</span>
+          {isDangerous && visible && (
+            <Radiation className="w-2.5 h-2.5 text-yellow-200 animate-pulse" strokeWidth={2.5} />
+          )}
+        </div>
+        <div className="text-center">
+          <div className="font-display font-bold text-sm sm:text-base lg:text-lg text-white drop-shadow leading-none">
+            {el.s}
+          </div>
+          <div className="text-[7px] sm:text-[8px] text-white/85 truncate mt-0.5 tracking-wide">
+            {el.name}
+          </div>
+        </div>
+      </div>
+      {discovered && visible && (
+        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-emerald-200 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+      )}
+    </button>
+  );
+}
+
+/* =========================================================================
+   Element detail modal
+   ========================================================================= */
+function ElementModal({ el, onClose }) {
+  const cat = CATEGORIES[el.cat];
+  const danger = DANGER_INFO[el.danger];
+  const DangerIcon = danger.icon;
+
+  useEffect(() => {
+    const handle = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4 animate-fadein" onClick={onClose}>
+      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" />
+      <div onClick={e => e.stopPropagation()}
+           className="relative w-full max-w-3xl bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-[0_0_60px_rgba(34,211,238,0.25)] overflow-hidden animate-slideup">
+
+        {/* Top banner */}
+        <div className={`relative bg-gradient-to-br ${cat.tile} p-6 sm:p-8 overflow-hidden`}>
+          <button onClick={onClose} className="absolute top-3 right-3 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="absolute -bottom-10 -right-10 text-[180px] sm:text-[220px] font-display font-bold text-white/10 leading-none select-none">
+            {el.s}
+          </div>
+          <div className="relative flex items-end gap-4 sm:gap-6">
+            <div className="text-7xl sm:text-8xl">{el.emoji}</div>
+            <div>
+              <div className="font-mono text-xs text-white/80 tracking-widest">No. {el.n}  ·  {el.mass} u</div>
+              <div className="font-display text-4xl sm:text-5xl text-white drop-shadow-lg leading-tight">{el.name}</div>
+              <div className="mt-1 inline-block px-2 py-0.5 rounded-md bg-black/30 text-white/90 text-xs tracking-widest uppercase">
+                {cat.label}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 sm:p-8 space-y-5 max-h-[60vh] overflow-y-auto custom-scroll">
+          <Section icon={BookOpen} title="What it is">
+            <p className="text-slate-200 leading-relaxed">{el.desc}</p>
+          </Section>
+
+          <Section icon={Beaker} title="What it is used for">
+            <p className="text-slate-200 leading-relaxed">{el.uses}</p>
+          </Section>
+
+          <Section icon={Lightbulb} title="Mind-Blowing Fact">
+            <p className="font-fact text-amber-200 text-lg leading-relaxed">{el.fact}</p>
+          </Section>
+
+          <div className={`flex items-start gap-3 p-4 rounded-xl border ${danger.bg}`}>
+            <DangerIcon className={`w-6 h-6 ${danger.color} flex-shrink-0 mt-0.5`} />
+            <div>
+              <div className={`font-display text-sm tracking-widest ${danger.color}`}>DANGER LEVEL · {danger.label.toUpperCase()}</div>
+              <div className="flex gap-1 mt-1.5">
+                {[1,2,3,4,5].map(i => (
+                  <span key={i} className={`h-1.5 w-8 rounded-full ${
+                    i <= el.danger ? 'bg-current' : 'bg-slate-700'
+                  } ${danger.color}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ icon: Icon, title, children }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1.5">
+        <Icon className="w-4 h-4 text-cyan-300" />
+        <h3 className="font-display text-xs tracking-[0.2em] text-cyan-300 uppercase">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* =========================================================================
+   Games hub
+   ========================================================================= */
+function GamesHub({ onStart }) {
+  const games = [
+    { id: 'detective', name: 'Element Detective',  desc: 'Read 3 clues and guess the mystery element. Earn streaks for bonus XP.', icon: Lightbulb, color: 'from-cyan-500 to-blue-600', diff: 'EASY' },
+    { id: 'speed',     name: 'Symbol Speed Match', desc: 'Race the clock! Match element symbols to names before time runs out.', icon: Timer,    color: 'from-amber-500 to-orange-600', diff: 'FAST' },
+    { id: 'mystery',   name: 'Mystery Element',    desc: 'Clues reveal one at a time. Guess earlier, score more points!',        icon: Brain,    color: 'from-fuchsia-500 to-purple-600', diff: 'TRICKY' },
+    { id: 'memory',    name: 'Atomic Memory',      desc: 'Flip cards and match element symbols with their names.',                icon: Sparkle,  color: 'from-emerald-500 to-teal-600', diff: 'CLASSIC' },
+  ];
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="font-display text-3xl tracking-wider text-white">Choose Your Challenge</h2>
+        <p className="text-slate-400 text-sm mt-1">Each game earns you XP, levels up your scientist, and unlocks trophies.</p>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        {games.map(g => (
+          <button key={g.id} onClick={() => onStart(g.id)}
+            className="group relative text-left p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60 hover:border-cyan-400/50 transition-all overflow-hidden hover:shadow-[0_0_30px_rgba(34,211,238,0.18)]">
+            <div className={`absolute -top-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-br ${g.color} opacity-20 blur-2xl group-hover:opacity-40 transition-opacity`} />
+            <div className={`relative w-12 h-12 grid place-items-center rounded-xl bg-gradient-to-br ${g.color} mb-4 shadow-lg`}>
+              <g.icon className="w-6 h-6 text-white" strokeWidth={2.2} />
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-display text-xl text-white tracking-wide">{g.name}</h3>
+              <span className="text-[10px] tracking-widest text-cyan-300 px-1.5 py-0.5 rounded bg-cyan-400/10 border border-cyan-400/30">{g.diff}</span>
+            </div>
+            <p className="text-slate-400 text-sm leading-relaxed">{g.desc}</p>
+            <div className="mt-4 flex items-center gap-1.5 text-cyan-300 text-sm font-display tracking-wider">
+              PLAY <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   Game: Element Detective
+   ========================================================================= */
+function DetectiveGame({ onExit, grantXp, onWin, streak, setStreak }) {
+  const [round, setRound] = useState(0);
+  const [score, setScore] = useState(0);
+  const [puzzle, setPuzzle] = useState(null);
+  const [picked, setPicked] = useState(null);
+
+  const ROUNDS = 7;
+
+  useEffect(() => { newPuzzle(); /* eslint-disable-next-line */ }, []);
+
+  function newPuzzle() {
+    const answer = rand(ELEMENTS.filter(e => e.n <= 92)); // common elements
+    const distractors = shuffle(ELEMENTS.filter(e => e.n !== answer.n && e.cat === answer.cat)).slice(0, 2);
+    const fillers = shuffle(ELEMENTS.filter(e => e.n !== answer.n && !distractors.includes(e))).slice(0, 1);
+    const choices = shuffle([answer, ...distractors, ...fillers]);
+    setPuzzle({ answer, choices });
+    setPicked(null);
+  }
+
+  function pick(el) {
+    if (picked) return;
+    setPicked(el);
+    if (el.n === puzzle.answer.n) {
+      setScore(s => s + 1);
+      setStreak(s => s + 1);
+      grantXp(15, 'Correct!');
+    } else {
+      setStreak(0);
+    }
+    setTimeout(() => {
+      if (round + 1 >= ROUNDS) {
+        if (score + (el.n === puzzle.answer.n ? 1 : 0) >= 4) onWin();
+        const finalBonus = Math.max(0, score + (el.n === puzzle.answer.n ? 1 : 0) - 3) * 10;
+        if (finalBonus) grantXp(finalBonus, 'End-of-round bonus');
+        setRound(ROUNDS);
+      } else {
+        setRound(r => r + 1);
+        newPuzzle();
+      }
+    }, 1500);
+  }
+
+  if (!puzzle) return null;
+
+  if (round >= ROUNDS) {
+    return (
+      <GameResult
+        title="Detective Closed The Case"
+        score={score} total={ROUNDS}
+        message={score >= 4 ? 'Sharp eye, Detective. You cracked the case.' : 'Good run. Try again to nail more clues.'}
+        onPlayAgain={() => { setRound(0); setScore(0); newPuzzle(); }}
+        onExit={onExit}
+      />
+    );
+  }
+
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Element Detective" round={round+1} total={ROUNDS} score={score} streak={streak} />
+
+      <div className="mt-6 max-w-3xl mx-auto">
+        <div className="p-6 sm:p-8 rounded-2xl bg-slate-900/70 border border-slate-700/60">
+          <div className="text-xs tracking-widest text-cyan-300 mb-3 font-display">CASE FILE</div>
+          <div className="space-y-3">
+            <Clue n={1} text={`Category: ${CATEGORIES[puzzle.answer.cat].label}`} />
+            <Clue n={2} text={`Used in: ${puzzle.answer.uses.split('.')[0].split(',').slice(0,2).join(', ')}`} />
+            <Clue n={3} text={puzzle.answer.fact} />
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {puzzle.choices.map(c => {
+            const cat = CATEGORIES[c.cat];
+            const isAnswer = picked && c.n === puzzle.answer.n;
+            const isWrongPick = picked && picked.n === c.n && c.n !== puzzle.answer.n;
+            return (
+              <button key={c.n} onClick={() => pick(c)} disabled={!!picked}
+                className={`p-4 rounded-xl text-center transition-all border ${
+                  picked ? (
+                    isAnswer ? 'bg-emerald-500/30 border-emerald-400 scale-105' :
+                    isWrongPick ? 'bg-red-500/30 border-red-400' :
+                    'opacity-40 border-slate-700'
+                  ) : `bg-gradient-to-br ${cat.tile} border-transparent hover:scale-105`
+                }`}>
+                <div className="text-3xl">{c.emoji}</div>
+                <div className="font-display text-2xl text-white mt-1">{c.s}</div>
+                <div className="text-xs text-white/85 mt-0.5">{c.name}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Clue({ n, text }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/60 border border-slate-700/40">
+      <div className="w-7 h-7 rounded-full bg-cyan-400/15 border border-cyan-400/40 grid place-items-center font-display text-cyan-300 text-xs flex-shrink-0">{n}</div>
+      <p className="text-slate-200 text-sm leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
+/* =========================================================================
+   Game: Symbol Speed Match
+   ========================================================================= */
+function SpeedMatchGame({ onExit, grantXp, onWin }) {
+  const [time, setTime] = useState(45);
+  const [score, setScore] = useState(0);
+  const [over, setOver] = useState(false);
+  const [puzzle, setPuzzle] = useState(null);
+  const [picked, setPicked] = useState(null);
+
+  useEffect(() => { newPuzzle(); /* eslint-disable-next-line */ }, []);
+
+  useEffect(() => {
+    if (over) return;
+    if (time <= 0) {
+      setOver(true);
+      grantXp(score * 5, 'Speed bonus!');
+      if (score >= 8) onWin();
+      return;
+    }
+    const t = setTimeout(() => setTime(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [time, over, score, grantXp, onWin]);
+
+  function newPuzzle() {
+    const answer = rand(ELEMENTS.filter(e => e.n <= 86));
+    const others = shuffle(ELEMENTS.filter(e => e.n !== answer.n)).slice(0, 3);
+    setPuzzle({ answer, choices: shuffle([answer, ...others]) });
+    setPicked(null);
+  }
+
+  function pick(el) {
+    if (picked || over) return;
+    setPicked(el);
+    if (el.n === puzzle.answer.n) {
+      setScore(s => s + 1);
+      setTimeout(() => newPuzzle(), 350);
+    } else {
+      setTime(t => Math.max(0, t - 3));
+      setTimeout(() => newPuzzle(), 600);
+    }
+  }
+
+  if (over) {
+    return (
+      <GameResult
+        title="Time's Up!"
+        score={score} total={`${score} matches`}
+        message={score >= 8 ? 'Lightning reflexes! That was incredible.' : 'Good run. Faster next time?'}
+        onPlayAgain={() => { setScore(0); setTime(45); setOver(false); newPuzzle(); }}
+        onExit={onExit}
+      />
+    );
+  }
+  if (!puzzle) return null;
+
+  const cat = CATEGORIES[puzzle.answer.cat];
+
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Symbol Speed Match" extra={
+        <div className="flex items-center gap-2 text-amber-300">
+          <Timer className="w-4 h-4" />
+          <span className="font-display text-lg tabular-nums">{time}s</span>
+        </div>
+      } score={score} />
+
+      <div className="mt-6 max-w-2xl mx-auto">
+        <div className="text-center mb-1 text-xs tracking-widest text-slate-400 font-display">WHICH ELEMENT IS THIS?</div>
+        <div className={`mx-auto w-40 h-40 rounded-2xl bg-gradient-to-br ${cat.tile} grid place-items-center shadow-[0_0_50px_var(--glow)] mb-6`} style={{'--glow': cat.glow}}>
+          <div className="font-display text-7xl text-white drop-shadow-lg">{puzzle.answer.s}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {puzzle.choices.map(c => {
+            const isAnswer = picked && c.n === puzzle.answer.n;
+            const isWrong = picked && picked.n === c.n && c.n !== puzzle.answer.n;
+            return (
+              <button key={c.n} onClick={() => pick(c)} disabled={!!picked}
+                className={`p-4 rounded-xl text-left transition-all border ${
+                  picked ? (
+                    isAnswer ? 'bg-emerald-500/30 border-emerald-400' :
+                    isWrong ? 'bg-red-500/30 border-red-400' :
+                    'opacity-50 border-slate-700'
+                  ) : 'bg-slate-900/70 border-slate-700/60 hover:border-cyan-400/60 hover:bg-slate-800'
+                }`}>
+                <div className="font-display text-xl text-white">{c.name}</div>
+                <div className="text-xs text-slate-400 mt-0.5">No. {c.n}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-4 text-center text-xs text-slate-500">Wrong answer = -3 seconds. Be careful!</div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   Game: Mystery Element (clues reveal one at a time)
+   ========================================================================= */
+function MysteryGame({ onExit, grantXp, onWin }) {
+  const [round, setRound] = useState(0);
+  const [score, setScore] = useState(0);
+  const [revealed, setRevealed] = useState(1);
+  const [puzzle, setPuzzle] = useState(null);
+  const [picked, setPicked] = useState(null);
+  const [input, setInput] = useState('');
+
+  const ROUNDS = 5;
+
+  useEffect(() => { newPuzzle(); /* eslint-disable-next-line */ }, []);
+
+  function newPuzzle() {
+    const answer = rand(ELEMENTS.filter(e => e.n <= 86));
+    const clues = [
+      `Atomic number: ${answer.n}`,
+      `Category: ${CATEGORIES[answer.cat].label}`,
+      `Atomic mass: ${answer.mass}`,
+      `${answer.fact}`,
+      `It is used for: ${answer.uses.split('.')[0]}.`,
+      `Its symbol starts with the letter "${answer.s[0]}"`,
+    ];
+    setPuzzle({ answer, clues: shuffle(clues).slice(0, 5) });
+    setRevealed(1);
+    setPicked(null);
+    setInput('');
+  }
+
+  function reveal() { setRevealed(r => Math.min(r + 1, 5)); }
+
+  function submit() {
+    if (picked) return;
+    const ok = input.trim().toLowerCase() === puzzle.answer.name.toLowerCase()
+            || input.trim().toLowerCase() === puzzle.answer.s.toLowerCase();
+    setPicked(ok ? 'correct' : 'wrong');
+    if (ok) {
+      const points = (6 - revealed) * 10; // fewer clues = more points
+      setScore(s => s + points);
+      grantXp(points, `+${points} points`);
+    }
+    setTimeout(() => {
+      if (round + 1 >= ROUNDS) {
+        if (score >= 80) onWin();
+        setRound(ROUNDS);
+      } else {
+        setRound(r => r + 1);
+        newPuzzle();
+      }
+    }, 1900);
+  }
+
+  if (!puzzle) return null;
+
+  if (round >= ROUNDS) {
+    return (
+      <GameResult
+        title="Mystery Solved"
+        score={score} total="points"
+        message={score >= 100 ? 'Brilliant deduction! You barely needed any clues.' : 'Great work, keep training that detective brain.'}
+        onPlayAgain={() => { setRound(0); setScore(0); newPuzzle(); }}
+        onExit={onExit}
+      />
+    );
+  }
+
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Mystery Element" round={round+1} total={ROUNDS} score={score} extra={
+        <div className="text-xs text-slate-400 font-display tracking-wider">CLUE {revealed}/5</div>
+      } />
+
+      <div className="mt-6 max-w-2xl mx-auto">
+        <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60 space-y-2">
+          {puzzle.clues.slice(0, revealed).map((c, i) => (
+            <div key={i} className="p-3 rounded-lg bg-slate-950/60 border border-slate-700/40 animate-slidein">
+              <div className="text-[10px] tracking-widest text-cyan-300 mb-1 font-display">CLUE {i+1}</div>
+              <div className="text-slate-200">{c}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row gap-3">
+          <button onClick={reveal} disabled={revealed >= 5 || picked}
+            className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-display tracking-wider disabled:opacity-40">
+            Reveal Next Clue (-10 pts)
+          </button>
+          <div className="flex-1 flex gap-2">
+            <input
+              value={input} onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+              placeholder="Element name or symbol..."
+              disabled={!!picked}
+              className={`flex-1 px-4 py-2 rounded-lg bg-slate-900 border focus:outline-none text-sm ${
+                picked === 'correct' ? 'border-emerald-400' :
+                picked === 'wrong' ? 'border-red-400' :
+                'border-slate-700 focus:border-cyan-400/60'
+              }`} />
+            <button onClick={submit} disabled={!input || !!picked}
+              className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-display tracking-wider text-sm disabled:opacity-40">
+              GUESS
+            </button>
+          </div>
+        </div>
+        {picked === 'correct' && <div className="mt-3 text-emerald-300 font-display tracking-wider">CORRECT! It was {puzzle.answer.name} ({puzzle.answer.s}).</div>}
+        {picked === 'wrong' && <div className="mt-3 text-red-300 font-display tracking-wider">Not quite. It was {puzzle.answer.name} ({puzzle.answer.s}).</div>}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   Game: Atomic Memory (match symbol cards to name cards)
+   ========================================================================= */
+function MemoryGame({ onExit, grantXp, onWin }) {
+  const [cards, setCards] = useState([]);
+  const [flipped, setFlipped] = useState([]);
+  const [matched, setMatched] = useState(new Set());
+  const [moves, setMoves] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => { reset(); /* eslint-disable-next-line */ }, []);
+
+  function reset() {
+    const picks = shuffle(ELEMENTS.filter(e => e.n <= 36)).slice(0, 8);
+    const symbolCards = picks.map(e => ({ id: `s-${e.n}`, kind: 'sym', el: e }));
+    const nameCards   = picks.map(e => ({ id: `n-${e.n}`, kind: 'name', el: e }));
+    setCards(shuffle([...symbolCards, ...nameCards]));
+    setFlipped([]); setMatched(new Set()); setMoves(0); setDone(false);
+  }
+
+  function flip(card) {
+    if (flipped.length === 2 || flipped.find(c => c.id === card.id) || matched.has(card.el.n)) return;
+    const newFlipped = [...flipped, card];
+    setFlipped(newFlipped);
+    if (newFlipped.length === 2) {
+      setMoves(m => m + 1);
+      const [a, b] = newFlipped;
+      if (a.el.n === b.el.n && a.kind !== b.kind) {
+        const next = new Set(matched).add(a.el.n);
+        setTimeout(() => {
+          setMatched(next);
+          setFlipped([]);
+          grantXp(8, 'Match!');
+          if (next.size === 8) {
+            setDone(true);
+            onWin();
+            const efficiencyBonus = Math.max(0, 15 - moves) * 5;
+            if (efficiencyBonus) grantXp(efficiencyBonus, 'Efficiency bonus');
+          }
+        }, 600);
+      } else {
+        setTimeout(() => setFlipped([]), 900);
+      }
+    }
+  }
+
+  if (done) {
+    return (
+      <GameResult
+        title="Memory Master!"
+        score={moves} total="moves"
+        message={moves <= 12 ? 'Photographic memory! Incredible focus.' : 'Solid work. Try to do it in fewer moves!'}
+        onPlayAgain={reset}
+        onExit={onExit}
+      />
+    );
+  }
+
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Atomic Memory" extra={
+        <div className="text-sm text-slate-300">Moves: <span className="font-display text-amber-300">{moves}</span></div>
+      } score={`${matched.size}/8`} />
+
+      <div className="mt-6 max-w-3xl mx-auto grid grid-cols-4 gap-2 sm:gap-3">
+        {cards.map(card => {
+          const isFlipped = flipped.find(c => c.id === card.id) || matched.has(card.el.n);
+          const isMatched = matched.has(card.el.n);
+          const cat = CATEGORIES[card.el.cat];
+          return (
+            <button key={card.id} onClick={() => flip(card)}
+              className={`aspect-square rounded-xl transition-all duration-500 perspective-card ${isMatched ? 'opacity-60' : ''}`}>
+              <div className={`relative w-full h-full transition-transform duration-500 transform-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+                {/* Front (hidden) */}
+                <div className="absolute inset-0 backface-hidden rounded-xl bg-slate-900/80 border border-slate-700/60 grid place-items-center hover:border-cyan-400/50">
+                  <Atom className="w-7 h-7 text-slate-600" />
+                </div>
+                {/* Back (revealed) */}
+                <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-xl bg-gradient-to-br ${cat.tile} grid place-items-center p-2`}>
+                  {card.kind === 'sym' ? (
+                    <div className="font-display text-2xl sm:text-4xl text-white">{card.el.s}</div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="font-display text-sm sm:text-base text-white">{card.el.name}</div>
+                      <div className="text-[10px] text-white/80 mt-0.5">No. {card.el.n}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   Game UI helpers
+   ========================================================================= */
+function GameHeader({ onExit, title, round, total, score, streak, extra }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <button onClick={onExit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-cyan-400/50 text-sm">
+        <ChevronLeft className="w-4 h-4" /> Exit
+      </button>
+      <h2 className="font-display text-xl sm:text-2xl tracking-wider text-white">{title}</h2>
+      <div className="ml-auto flex items-center gap-4 flex-wrap">
+        {round && <div className="text-sm text-slate-400">Round <span className="font-display text-cyan-300">{round}/{total}</span></div>}
+        {score !== undefined && <div className="text-sm text-slate-400">Score <span className="font-display text-amber-300">{score}</span></div>}
+        {streak > 0 && <div className="flex items-center gap-1 text-sm text-orange-300"><Flame className="w-4 h-4" /> {streak}</div>}
+        {extra}
+      </div>
+    </div>
+  );
+}
+
+function GameResult({ title, score, total, message, onPlayAgain, onExit }) {
+  return (
+    <div className="max-w-md mx-auto mt-10 p-8 rounded-2xl bg-slate-900/80 border border-cyan-400/40 text-center shadow-[0_0_40px_rgba(34,211,238,0.3)] animate-slideup">
+      <Trophy className="w-14 h-14 mx-auto text-amber-300" />
+      <h2 className="mt-3 font-display text-2xl tracking-wider text-white">{title}</h2>
+      <div className="mt-2 text-5xl font-display text-cyan-300">{score}</div>
+      <div className="text-sm tracking-widest text-slate-400 mt-1 uppercase">{total}</div>
+      <p className="mt-4 text-slate-300">{message}</p>
+      <div className="mt-6 flex gap-3 justify-center">
+        <button onClick={onPlayAgain} className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-display tracking-wider text-sm flex items-center gap-2">
+          <RefreshCw className="w-4 h-4" /> Play Again
+        </button>
+        <button onClick={onExit} className="px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-500 text-sm">
+          Choose Another Game
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   Achievements view
+   ========================================================================= */
+function AchievementsView({ state, unlocked }) {
+  return (
+    <div>
+      <h2 className="font-display text-3xl tracking-wider text-white mb-1">Trophy Cabinet</h2>
+      <p className="text-slate-400 text-sm mb-6">Unlocked {unlocked.size} of {ACHIEVEMENTS.length} trophies</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {ACHIEVEMENTS.map(a => {
+          const earned = unlocked.has(a.id);
+          const Icon = a.icon;
+          return (
+            <div key={a.id} className={`relative p-5 rounded-2xl border transition-all ${
+              earned
+                ? 'bg-gradient-to-br from-amber-500/15 to-fuchsia-500/15 border-amber-400/50 shadow-[0_0_25px_rgba(251,191,36,0.2)]'
+                : 'bg-slate-900/60 border-slate-700/50'
+            }`}>
+              <div className={`w-11 h-11 grid place-items-center rounded-xl mb-3 ${
+                earned ? 'bg-gradient-to-br from-amber-400 to-fuchsia-500 text-slate-900' : 'bg-slate-800 text-slate-600'
+              }`}>
+                {earned ? <Icon className="w-6 h-6" strokeWidth={2.4} /> : <Lock className="w-5 h-5" />}
+              </div>
+              <h3 className={`font-display text-lg tracking-wide ${earned ? 'text-amber-200' : 'text-slate-400'}`}>
+                {a.name}
+              </h3>
+              <p className="text-sm text-slate-400 mt-1">{a.desc}</p>
+              {earned && <div className="absolute top-3 right-3 text-[10px] tracking-widest text-amber-300 font-display">UNLOCKED</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   How To Play
+   ========================================================================= */
+function AboutView() {
+  return (
+    <div className="max-w-3xl mx-auto">
+      <h2 className="font-display text-3xl tracking-wider text-white mb-4">How To Play</h2>
+      <div className="space-y-4 text-slate-300 leading-relaxed">
+        <Card icon={Atom} title="Click any element">
+          Tap any tile on the periodic table to discover what it is, what it's used for, and a wild fact you can use to amaze your friends. Each new element you discover earns +5 XP and a green dot to mark you have seen it.
+        </Card>
+        <Card icon={Search} title="Filter and search">
+          Use the search bar to find any element by name, symbol, or atomic number. The category pills above the table let you focus on just the noble gases, the alkali metals, or any other family.
+        </Card>
+        <Card icon={Target} title="Play the games">
+          Four games keep things fresh. Element Detective gives you 3 clues, Mystery Element reveals clues one by one, Symbol Speed Match races the clock, and Atomic Memory tests your matching skills.
+        </Card>
+        <Card icon={Sparkles} title="Earn XP and level up">
+          Discover elements, win games, and chain correct answers to climb the level bar. Every 100 XP is a new level for your scientist.
+        </Card>
+        <Card icon={Trophy} title="Collect trophies">
+          12 secret trophies are hiding in the lab. Find every noble gas, win 5 games in a row, get a streak in Detective, and more. Check the Trophy Cabinet to see what you have unlocked.
+        </Card>
+        <Card icon={AlertTriangle} title="Watch for the radiation icon">
+          A glowing yellow symbol on a tile means the element is dangerous in real life. Read about it to learn why!
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Card({ icon: Icon, title, children }) {
+  return (
+    <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-8 h-8 grid place-items-center rounded-lg bg-cyan-400/15 border border-cyan-400/40">
+          <Icon className="w-4 h-4 text-cyan-300" />
+        </div>
+        <h3 className="font-display text-lg tracking-wide text-white">{title}</h3>
+      </div>
+      <p>{children}</p>
+    </div>
+  );
+}
+
+/* =========================================================================
+   Achievement toast
+   ========================================================================= */
+function AchievementToast({ toast }) {
+  const Icon = toast.icon;
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-slideup">
+      <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-gradient-to-r from-amber-500/95 to-fuchsia-500/95 text-slate-900 shadow-[0_0_40px_rgba(251,191,36,0.5)] border border-amber-200/40">
+        <div className="w-10 h-10 grid place-items-center rounded-xl bg-slate-900/85 text-amber-300">
+          <Icon className="w-5 h-5" strokeWidth={2.4} />
+        </div>
+        <div>
+          <div className="text-[10px] tracking-[0.25em] font-display uppercase">Trophy Unlocked</div>
+          <div className="font-display text-lg tracking-wider leading-tight">{toast.name}</div>
+          <div className="text-xs leading-tight opacity-80">{toast.desc}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   Inline styles (custom fonts, animations)
+   ========================================================================= */
+function Style() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap');
+
+      .font-display { font-family: 'Orbitron', system-ui, sans-serif; letter-spacing: 0.02em; }
+      .font-body    { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+      .font-fact    { font-family: 'Caveat', cursive; }
+
+      @keyframes fadein { from { opacity: 0 } to { opacity: 1 } }
+      .animate-fadein { animation: fadein .25s ease-out }
+
+      @keyframes slideup {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .animate-slideup { animation: slideup .35s cubic-bezier(0.2, 0.7, 0.3, 1); }
+
+      @keyframes slidein {
+        from { opacity: 0; transform: translateX(-12px); }
+        to   { opacity: 1; transform: translateX(0); }
+      }
+      .animate-slidein { animation: slidein .3s ease-out; }
+
+      @keyframes xpfloat {
+        0%   { opacity: 0; transform: translate(-50%, 10px) scale(0.85); }
+        20%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        80%  { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+        100% { opacity: 0; transform: translate(-50%, -28px) scale(0.95); }
+      }
+      .animate-xpfloat { animation: xpfloat 1.4s ease-out forwards; }
+
+      @keyframes twinkle {
+        0%, 100% { opacity: .15; transform: scale(.8); }
+        50%      { opacity: .9;  transform: scale(1.2); }
+      }
+      .animate-twinkle { animation: twinkle 4s ease-in-out infinite; }
+
+      .perspective-card { perspective: 1000px; }
+      .transform-3d    { transform-style: preserve-3d; }
+      .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+      .rotate-y-180    { transform: rotateY(180deg); }
+
+      .custom-scroll::-webkit-scrollbar { width: 8px; }
+      .custom-scroll::-webkit-scrollbar-track { background: rgba(15,23,42,0.4); border-radius: 4px; }
+      .custom-scroll::-webkit-scrollbar-thumb { background: rgba(34,211,238,0.4); border-radius: 4px; }
+      .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(34,211,238,0.7); }
+    `}</style>
+  );
+}
+
+
+    /* ======================================================================
+       Mount React, hide the boot screen, restore saved progress on load
+       ====================================================================== */
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+
+    // Fade out the boot screen once React has mounted
+    requestAnimationFrame(() => {
+      const boot = document.getElementById('boot');
+      if (boot) {
+        boot.style.opacity = '0';
+        setTimeout(() => boot.remove(), 450);
+      }
+    });
+  </script>
+</body>
+</html>
