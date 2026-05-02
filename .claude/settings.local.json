@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(gh repo:*)",
+      "Bash(where gh:*)",
+      "Read(//c/Users/patil/**)",
+      "Bash(git config:*)"
+    ]
+  }
+}

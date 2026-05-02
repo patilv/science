@@ -1,0 +1,26 @@
+{
+  "name": "Atomic Lab — Interactive Periodic Table",
+  "short_name": "Atomic Lab",
+  "description": "An interactive, gamified periodic table for curious explorers. Discover all 118 elements, play games, earn XP, and unlock trophies.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#070b18",
+  "background_color": "#070b18",
+  "categories": ["education", "games", "kids"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

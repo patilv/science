@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Science Lab · Patil</title>
+  <meta name="description" content="A growing collection of interactive science games and tools for curious minds." />
+  <meta name="theme-color" content="#070b18" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    html, body { background: #070b18; min-height: 100vh; }
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #f1f5f9; }
+    .font-display { font-family: 'Orbitron', system-ui, sans-serif; letter-spacing: 0.04em; }
+
+    .bg-cosmos {
+      background: radial-gradient(900px 600px at 20% -10%, rgba(34,211,238,0.18), transparent 60%),
+                  radial-gradient(900px 700px at 110% 10%, rgba(217,70,239,0.16), transparent 60%),
+                  radial-gradient(800px 600px at 50% 130%, rgba(251,191,36,0.10), transparent 60%);
+    }
+    .bg-grid {
+      background-image: linear-gradient(rgba(34,211,238,0.06) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(34,211,238,0.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent);
+      -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent);
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: .15; transform: scale(.8); }
+      50%      { opacity: .9;  transform: scale(1.2); }
+    }
+    .twinkle { animation: twinkle 4s ease-in-out infinite; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50%      { transform: translateY(-8px); }
+    }
+    .float-slow { animation: float 6s ease-in-out infinite; }
+  </style>
+</head>
+<body class="relative overflow-x-hidden">
+
+  <!-- Cosmic background layers -->
+  <div class="fixed inset-0 -z-10 bg-cosmos opacity-60"></div>
+  <div class="fixed inset-0 -z-10 bg-grid"></div>
+  <div id="stars" class="fixed inset-0 -z-10 pointer-events-none"></div>
+
+  <!-- HEADER -->
+  <header class="border-b border-cyan-400/20 bg-slate-950/40 backdrop-blur-xl">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="relative w-10 h-10 sm:w-12 sm:h-12 grid place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-fuchsia-500 shadow-[0_0_30px_rgba(34,211,238,0.5)]">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 sm:w-7 sm:h-7 text-slate-900">
+            <circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z"/><path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5Z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="font-display text-base sm:text-lg tracking-[0.2em] bg-gradient-to-r from-cyan-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">SCIENCE LAB</div>
+          <div class="text-[10px] sm:text-[11px] tracking-[0.3em] text-slate-400 mt-0.5">CURIOSITY ENGINEERED</div>
+        </div>
+      </div>
+      <a href="https://patilv.com" target="_blank" rel="noopener"
+         class="text-xs sm:text-sm tracking-wider text-slate-400 hover:text-cyan-300 transition-colors font-display">
+        patilv.com →
+      </a>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 pb-10 text-center">
+    <div class="float-slow inline-block mb-5">
+      <div class="px-3 py-1 rounded-full border border-cyan-400/40 text-[10px] tracking-[0.3em] text-cyan-300 font-display uppercase">
+        Open Lab · Always Free
+      </div>
+    </div>
+    <h1 class="font-display text-4xl sm:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight">
+      <span class="bg-gradient-to-r from-cyan-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">
+        Interactive games
+      </span>
+      <br/>
+      <span class="text-white">for curious minds.</span>
+    </h1>
+    <p class="mt-6 max-w-xl mx-auto text-slate-300 text-base sm:text-lg leading-relaxed">
+      A growing collection of science games and learning tools.
+      Pick a topic, dive in, and earn trophies along the way.
+    </p>
+  </section>
+
+  <!-- GAMES GRID -->
+  <section class="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+      <div class="font-display text-xs tracking-[0.3em] text-slate-400 uppercase">Available Games</div>
+      <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      <!-- LIVE GAME: Atomic Lab / Periodic Table -->
+      <a href="periodic-table/" class="group relative block rounded-2xl bg-slate-900/70 border border-slate-700/60 overflow-hidden hover:border-cyan-400/60 hover:shadow-[0_0_40px_rgba(34,211,238,0.2)] transition-all">
+        <div class="aspect-[16/10] relative overflow-hidden bg-gradient-to-br from-cyan-500/30 via-fuchsia-500/20 to-amber-500/20">
+          <div class="absolute inset-0 grid place-items-center">
+            <img src="periodic-table/icon-192.png" alt="" class="w-24 h-24 opacity-90 group-hover:scale-110 transition-transform duration-500" />
+          </div>
+          <div class="absolute top-3 left-3 px-2 py-0.5 rounded-md bg-emerald-500/90 text-slate-900 text-[10px] tracking-widest font-display uppercase">
+            Live
+          </div>
+        </div>
+        <div class="p-5">
+          <div class="flex items-baseline justify-between mb-1">
+            <h3 class="font-display text-xl text-white tracking-wide">Atomic Lab</h3>
+            <span class="text-[10px] tracking-widest text-cyan-300 font-display">CHEMISTRY</span>
+          </div>
+          <p class="text-slate-300 text-sm leading-relaxed">
+            Discover all 118 elements with kid-friendly facts, four mini-games, an XP system, and 12 unlockable trophies.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-1.5">
+            <Tag>Ages 9-14</Tag>
+            <Tag>4 Games</Tag>
+            <Tag>Installable</Tag>
+          </div>
+          <div class="mt-4 flex items-center gap-1.5 text-cyan-300 text-sm font-display tracking-wider">
+            ENTER LAB
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- COMING SOON placeholders -->
+      <ComingSoon
+        title="Cell Quest"
+        topic="BIOLOGY"
+        desc="Explore the human cell, build your own organism, and learn how DNA copies itself."
+        gradient="from-emerald-500/20 via-teal-500/15 to-cyan-500/15"
+      ></ComingSoon>
+
+      <ComingSoon
+        title="Solar Voyager"
+        topic="ASTRONOMY"
+        desc="Travel between planets, time the orbits yourself, and unlock a lab notebook of cosmic facts."
+        gradient="from-fuchsia-500/20 via-purple-500/15 to-indigo-500/15"
+      ></ComingSoon>
+
+      <ComingSoon
+        title="Wave Lab"
+        topic="PHYSICS"
+        desc="Play with light, sound, and electricity. Discover how speakers, lasers, and rainbows work."
+        gradient="from-amber-500/20 via-orange-500/15 to-rose-500/15"
+      ></ComingSoon>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="max-w-6xl mx-auto px-4 sm:px-6 py-10 text-center border-t border-slate-800/60 mt-10">
+    <p class="text-sm text-slate-500">
+      Built with curiosity by <a href="https://patilv.com" class="text-cyan-300 hover:text-cyan-200">Vivek Patil</a>.
+      Free to use, easy to share.
+    </p>
+  </footer>
+
+  <script>
+    // Tag template
+    document.querySelectorAll('Tag').forEach(el => {
+      const span = document.createElement('span');
+      span.className = 'px-2 py-0.5 rounded-md text-[10px] tracking-wider text-slate-300 bg-slate-800/80 border border-slate-700/50';
+      span.textContent = el.textContent;
+      el.replaceWith(span);
+    });
+
+    // Coming Soon card template
+    document.querySelectorAll('ComingSoon').forEach(el => {
+      const title    = el.getAttribute('title');
+      const topic    = el.getAttribute('topic');
+      const desc     = el.getAttribute('desc');
+      const gradient = el.getAttribute('gradient');
+
+      const card = document.createElement('div');
+      card.className = 'relative block rounded-2xl bg-slate-900/40 border border-dashed border-slate-700/50 overflow-hidden';
+      card.innerHTML = `
+        <div class="aspect-[16/10] relative overflow-hidden bg-gradient-to-br ${gradient}">
+          <div class="absolute inset-0 grid place-items-center text-5xl opacity-30">⚗️</div>
+          <div class="absolute top-3 left-3 px-2 py-0.5 rounded-md bg-slate-700/80 text-slate-300 text-[10px] tracking-widest font-display uppercase">
+            Coming Soon
+          </div>
+        </div>
+        <div class="p-5">
+          <div class="flex items-baseline justify-between mb-1">
+            <h3 class="font-display text-xl text-slate-300 tracking-wide">${title}</h3>
+            <span class="text-[10px] tracking-widest text-slate-500 font-display">${topic}</span>
+          </div>
+          <p class="text-slate-400 text-sm leading-relaxed">${desc}</p>
+        </div>
+      `;
+      el.replaceWith(card);
+    });
+
+    // Sprinkle stars
+    const starsEl = document.getElementById('stars');
+    for (let i = 0; i < 30; i++) {
+      const s = document.createElement('span');
+      const size = Math.random() * 3 + 1;
+      s.className = 'absolute block rounded-full bg-cyan-300/40 twinkle';
+      s.style.width = `${size}px`;
+      s.style.height = `${size}px`;
+      s.style.top = `${Math.random() * 100}%`;
+      s.style.left = `${Math.random() * 100}%`;
+      s.style.animationDelay = `${Math.random() * 5}s`;
+      s.style.animationDuration = `${3 + Math.random() * 4}s`;
+      starsEl.appendChild(s);
+    }
+  </script>
+</body>
+</html>
