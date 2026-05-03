@@ -1,0 +1,16 @@
+{
+  "name": "Solar Voyager",
+  "short_name": "Solar Voyager",
+  "description": "Interactive solar system explorer. Discover planets, moons, missions, and play 4 cosmic games.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#020617",
+  "background_color": "#020617",
+  "categories": ["education", "games", "kids"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

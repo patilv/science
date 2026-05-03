@@ -1,0 +1,16 @@
+{
+  "name": "Anatomy Lab",
+  "short_name": "Anatomy Lab",
+  "description": "Interactive body explorer. Discover 24 organs and body parts, diagnose patients, and unlock trophies.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#1a0816",
+  "background_color": "#1a0816",
+  "categories": ["education", "games", "kids"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeBreaker · Crack The Cipher</title>
+  <meta name="description" content="Learn cryptography by cracking real ciphers. Six cipher types, five game modes, twelve trophies. From the Caesar cipher to the Vigenère." />
+
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#050616" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="CodeBreaker" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+
+  <style>
+    html, body { background: #050616; min-height: 100vh; }
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #f1f5f9; }
+    .font-display { font-family: 'Orbitron', system-ui, sans-serif; letter-spacing: 0.02em; }
+    .font-body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .font-fact { font-family: 'Caveat', cursive; }
+
+    #boot {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      z-index: 999; background: #050616; transition: opacity 0.4s;
+    }
+    #boot .ring {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 3px solid rgba(34,211,238,0.2);
+      border-top-color: #22d3ee;
+      animation: spin 0.9s linear infinite;
+    }
+    #boot p {
+      margin-top: 18px; font-family: 'Orbitron', sans-serif;
+      letter-spacing: 0.3em; font-size: 11px; color: #67e8f9;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 640px) {
+      .stat-chip { padding: 4px 8px !important; }
+      .stat-chip .stat-label { display: none; }
+      .stat-chip .stat-value { font-size: 13px !important; }
+      .header-pad { padding-top: 10px !important; padding-bottom: 6px !important; }
+    }
+
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15,23,42,0.4); border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(34,211,238,0.4); border-radius: 4px; }
+
+    @keyframes fadein { from { opacity: 0 } to { opacity: 1 } }
+    .animate-fadein { animation: fadein .25s ease-out }
+    @keyframes slideup {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slideup { animation: slideup .35s cubic-bezier(0.2, 0.7, 0.3, 1); }
+    @keyframes slidein {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .animate-slidein { animation: slidein .3s ease-out; }
+    @keyframes xpfloat {
+      0%   { opacity: 0; transform: translate(-50%, 10px) scale(0.85); }
+      20%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      80%  { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -28px) scale(0.95); }
+    }
+    .animate-xpfloat { animation: xpfloat 1.4s ease-out forwards; }
+    @keyframes blink {
+      50% { opacity: 0.3; }
+    }
+    .animate-blink { animation: blink 1.2s ease-in-out infinite; }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(34,211,238,0.3); }
+      50%      { box-shadow: 0 0 35px rgba(34,211,238,0.6); }
+    }
+    .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+    @keyframes typewriter-blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .cursor::after {
+      content: '▊';
+      color: #22d3ee;
+      animation: typewriter-blink 1s steps(2) infinite;
+    }
+  </style>
+</head>
+<body>
+  <div id="boot">
+    <div style="text-align:center">
+      <div class="ring"></div>
+      <p>BOOTING CODEBREAKER</p>
+    </div>
+  </div>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+
+  <div class="hidden
+    from-cyan-500 to-blue-600 from-fuchsia-500 to-purple-600 from-emerald-500 to-teal-600
+    from-amber-500 to-orange-600 from-rose-500 to-pink-600 from-violet-500 to-indigo-600
+    from-cyan-400 to-fuchsia-500 from-cyan-300 via-fuchsia-300 to-amber-300
+    from-cyan-400 via-fuchsia-400 to-amber-400 from-amber-500/15 to-fuchsia-500/15
+    from-amber-400 to-fuchsia-500 from-amber-500/95 to-fuchsia-500/95
+    text-cyan-200 text-cyan-300 text-fuchsia-200 text-fuchsia-300 text-emerald-200
+    text-emerald-300 text-amber-200 text-amber-300 text-rose-300 text-violet-300
+    text-orange-300 text-pink-300 text-slate-300
+    bg-emerald-500/15 border-emerald-400/40 bg-cyan-500/15 border-cyan-400/40
+    bg-fuchsia-500/15 border-fuchsia-400/40 bg-amber-500/15 border-amber-400/40
+    bg-rose-500/15 border-rose-400/40 bg-violet-500/15 border-violet-400/40
+    bg-red-500/15 border-red-400/40 bg-red-400/15 border-red-400/40
+  "></div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef, useMemo, useLayoutEffect } = React;
+
+    /* ====================================================================
+       Lucide icon wrapper — same pattern as the other games
+       ==================================================================== */
+    function L({ name, className = '', size = 24, strokeWidth = 2, ...rest }) {
+      const ref = useRef(null);
+      useLayoutEffect(() => {
+        if (!ref.current || !window.lucide) return;
+        const lib = window.lucide;
+        const node = lib.icons && lib.icons[name];
+        if (!node) return;
+        const svg = lib.createElement(node);
+        svg.setAttribute('width', size);
+        svg.setAttribute('height', size);
+        svg.setAttribute('stroke-width', strokeWidth);
+        if (className) svg.setAttribute('class', className);
+        ref.current.replaceChildren(svg);
+      }, [name, size, strokeWidth, className]);
+      return <span ref={ref} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle' }} />;
+    }
+
+    const Sparkles = (p) => <L name="Sparkles" {...p} />;
+    const Trophy = (p) => <L name="Trophy" {...p} />;
+    const BookOpen = (p) => <L name="BookOpen" {...p} />;
+    const Star = (p) => <L name="Star" {...p} />;
+    const X = (p) => <L name="X" {...p} />;
+    const Target = (p) => <L name="Target" {...p} />;
+    const Timer = (p) => <L name="Timer" {...p} />;
+    const RefreshCw = (p) => <L name="RefreshCw" {...p} />;
+    const ChevronRight = (p) => <L name="ChevronRight" {...p} />;
+    const ChevronLeft = (p) => <L name="ChevronLeft" {...p} />;
+    const Lock = (p) => <L name="Lock" {...p} />;
+    const Unlock = (p) => <L name="Unlock" {...p} />;
+    const Lightbulb = (p) => <L name="Lightbulb" {...p} />;
+    const Flame = (p) => <L name="Flame" {...p} />;
+    const Check = (p) => <L name="Check" {...p} />;
+    const Crown = (p) => <L name="Crown" {...p} />;
+    const Award = (p) => <L name="Award" {...p} />;
+    const Zap = (p) => <L name="Zap" {...p} />;
+    const KeyRound = (p) => <L name="KeyRound" {...p} />;
+    const Hash = (p) => <L name="Hash" {...p} />;
+    const Binary = (p) => <L name="Binary" {...p} />;
+    const Send = (p) => <L name="Send" {...p} />;
+    const Brain = (p) => <L name="Brain" {...p} />;
+    const Sparkle = (p) => <L name="Sparkle" {...p} />;
+    const ArrowRight = (p) => <L name="ArrowRight" {...p} />;
+    const Eye = (p) => <L name="Eye" {...p} />;
+    const Wand = (p) => <L name="Wand" {...p} />;
+
+    const xpToLevel = xp => Math.floor(xp / 100) + 1;
+    const xpInLevel = xp => xp % 100;
+    const rand = arr => arr[Math.floor(Math.random() * arr.length)];
+    const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+    const norm = s => (s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().replace(/\s+/g, ' ');
+
+    /* ====================================================================
+       CIPHER ENGINES — encode/decode logic for all six cipher types
+       ==================================================================== */
+
+    // Reverse: just flip the string
+    const reverse = {
+      encode: (s) => s.split('').reverse().join(''),
+      decode: (s) => s.split('').reverse().join(''),
+    };
+
+    // Caesar: shift each letter by N (default 3)
+    const caesar = {
+      encode: (s, shift = 3) => s.toUpperCase().split('').map(c => {
+        if (c < 'A' || c > 'Z') return c;
+        return String.fromCharCode(((c.charCodeAt(0) - 65 + shift) % 26 + 26) % 26 + 65);
+      }).join(''),
+      decode: (s, shift = 3) => caesar.encode(s, -shift),
+    };
+
+    // Atbash: A↔Z mirror (self-inverse)
+    const atbash = {
+      encode: (s) => s.toUpperCase().split('').map(c => {
+        if (c < 'A' || c > 'Z') return c;
+        return String.fromCharCode(90 - (c.charCodeAt(0) - 65));
+      }).join(''),
+      decode: (s) => atbash.encode(s),
+    };
+
+    // Morse code
+    const MORSE_MAP = {
+      'A':'.-',    'B':'-...',  'C':'-.-.',  'D':'-..',   'E':'.',
+      'F':'..-.',  'G':'--.',   'H':'....',  'I':'..',    'J':'.---',
+      'K':'-.-',   'L':'.-..',  'M':'--',    'N':'-.',    'O':'---',
+      'P':'.--.',  'Q':'--.-',  'R':'.-.',   'S':'...',   'T':'-',
+      'U':'..-',   'V':'...-',  'W':'.--',   'X':'-..-',  'Y':'-.--',  'Z':'--..',
+      '0':'-----', '1':'.----', '2':'..---', '3':'...--', '4':'....-',
+      '5':'.....', '6':'-....', '7':'--...', '8':'---..', '9':'----.',
+    };
+    const MORSE_REV = Object.fromEntries(Object.entries(MORSE_MAP).map(([k,v]) => [v,k]));
+    const morse = {
+      encode: (s) => s.toUpperCase().split('').map(c => {
+        if (c === ' ') return '/';
+        return MORSE_MAP[c] || '';
+      }).filter(x => x).join(' '),
+      decode: (s) => s.split(' ').map(t => t === '/' ? ' ' : (MORSE_REV[t] || '?')).join(''),
+    };
+
+    // Pigpen: geometric symbols. We use CSS-rendered grid positions, not unicode.
+    // For each letter, store a "shape index" 0-25.
+    // This keeps decode logic simple: render shape→letter map.
+    const PIGPEN_SHAPES = [
+      // First grid (no dot): A B C / D E F / G H I
+      {grid:'tic', dot:false, pos:[0,1,2,3,4,5,6,7,8]},
+      // Second grid (with dot): J K L / M N O / P Q R
+      {grid:'tic', dot:true,  pos:[0,1,2,3,4,5,6,7,8]},
+      // First X: S T U V
+      {grid:'x',   dot:false, pos:[0,1,2,3]},
+      // Second X with dot: W X Y Z
+      {grid:'x',   dot:true,  pos:[0,1,2,3]},
+    ];
+    // Build letter→shape encoding. A=tic,no-dot,pos0; B=tic,no-dot,pos1; ...
+    const PIGPEN_ENCODE = {};
+    let pi = 0;
+    for (const grid of PIGPEN_SHAPES) {
+      for (const p of grid.pos) {
+        const letter = String.fromCharCode(65 + pi);
+        PIGPEN_ENCODE[letter] = { grid: grid.grid, dot: grid.dot, pos: p };
+        pi++;
+      }
+    }
+    const pigpen = {
+      // For game purposes, we'll show shapes visually but store a text key
+      // representation: e.g. "T0" through "T8" + "T0d" through "T8d" + "X0" through "X3" + "X0d" through "X3d"
+      encode: (s) => s.toUpperCase().split('').map(c => {
+        if (c === ' ') return '/';
+        const sh = PIGPEN_ENCODE[c];
+        if (!sh) return '';
+        return (sh.grid === 'tic' ? 'T' : 'X') + sh.pos + (sh.dot ? 'd' : '');
+      }).filter(x => x).join(' '),
+      decode: (s) => s.split(' ').map(tok => {
+        if (tok === '/') return ' ';
+        // Find the letter whose shape matches this token
+        const grid = tok[0] === 'T' ? 'tic' : 'x';
+        const dot = tok.endsWith('d');
+        const pos = parseInt(tok.slice(1, dot ? -1 : undefined), 10);
+        for (const [letter, sh] of Object.entries(PIGPEN_ENCODE)) {
+          if (sh.grid === grid && sh.dot === dot && sh.pos === pos) return letter;
+        }
+        return '?';
+      }).join(''),
+    };
+
+    // Vigenère: Caesar with a rotating keyword
+    const vigenere = {
+      encode: (s, key = 'KEY') => {
+        const K = key.toUpperCase().replace(/[^A-Z]/g,'');
+        if (!K) return s;
+        let ki = 0;
+        return s.toUpperCase().split('').map(c => {
+          if (c < 'A' || c > 'Z') return c;
+          const shift = K.charCodeAt(ki % K.length) - 65;
+          ki++;
+          return String.fromCharCode(((c.charCodeAt(0) - 65 + shift) % 26) + 65);
+        }).join('');
+      },
+      decode: (s, key = 'KEY') => {
+        const K = key.toUpperCase().replace(/[^A-Z]/g,'');
+        if (!K) return s;
+        let ki = 0;
+        return s.toUpperCase().split('').map(c => {
+          if (c < 'A' || c > 'Z') return c;
+          const shift = K.charCodeAt(ki % K.length) - 65;
+          ki++;
+          return String.fromCharCode(((c.charCodeAt(0) - 65 - shift + 26) % 26) + 65);
+        }).join('');
+      },
+    };
+
+    /* ====================================================================
+       CIPHER METADATA — what each cipher is, how it works, and difficulty
+       ==================================================================== */
+    const CIPHERS = {
+      reverse: {
+        id: 'reverse', name: 'Reverse Cipher', icon: ArrowRight, level: 1,
+        color: 'from-emerald-500 to-teal-600', accent: 'text-emerald-300', dot: 'bg-emerald-400',
+        tagline: 'Read it backward.',
+        story: 'The simplest cipher. Just flip the message backward. Easy to do, easy to crack, but surprisingly hard to read at first glance.',
+        howto: 'To encode: write the message, then reverse the order of all letters. To decode: reverse it again. The cipher undoes itself.',
+        example: 'HELLO → OLLEH',
+        difficulty: 'BEGINNER',
+        engine: reverse,
+      },
+      caesar: {
+        id: 'caesar', name: 'Caesar Cipher', icon: Hash, level: 2,
+        color: 'from-cyan-500 to-blue-600', accent: 'text-cyan-300', dot: 'bg-cyan-400',
+        tagline: 'Shift every letter by a number.',
+        story: 'Used by Julius Caesar over 2,000 years ago to send secret military messages. Pick a shift number, slide every letter forward by that much.',
+        howto: 'With a shift of 3: A becomes D, B becomes E, C becomes F, and so on. Z wraps back around to C. To decode, shift backward by the same number.',
+        example: 'HELLO with shift 3 → KHOOR',
+        difficulty: 'EASY',
+        engine: caesar,
+      },
+      atbash: {
+        id: 'atbash', name: 'Atbash Cipher', icon: KeyRound, level: 3,
+        color: 'from-fuchsia-500 to-purple-600', accent: 'text-fuchsia-300', dot: 'bg-fuchsia-400',
+        tagline: 'Mirror the alphabet.',
+        story: 'Used in ancient Hebrew texts. The alphabet is reflected like a mirror: A flips to Z, B flips to Y, M flips to N. The same trick encodes AND decodes.',
+        howto: 'Write the alphabet forward and backward stacked. Each letter pairs with its mirror. Encoding and decoding use the exact same swaps.',
+        example: 'HELLO → SVOOL',
+        difficulty: 'EASY',
+        engine: atbash,
+      },
+      morse: {
+        id: 'morse', name: 'Morse Code', icon: Binary, level: 4,
+        color: 'from-amber-500 to-orange-600', accent: 'text-amber-300', dot: 'bg-amber-400',
+        tagline: 'Dots and dashes.',
+        story: 'Invented in the 1830s for the telegraph. Letters become patterns of short dots (·) and long dashes (—). It saved lives at sea for over 100 years.',
+        howto: 'Each letter has a unique pattern. E is one dot. T is one dash. SOS is the famous distress call: ··· — — — ···',
+        example: 'HELLO → .... . .-.. .-.. ---',
+        difficulty: 'MEDIUM',
+        engine: morse,
+      },
+      pigpen: {
+        id: 'pigpen', name: 'Pigpen Cipher', icon: Sparkle, level: 5,
+        color: 'from-rose-500 to-pink-600', accent: 'text-rose-300', dot: 'bg-rose-400',
+        tagline: 'Letters become geometric shapes.',
+        story: 'Used by 18th-century Freemasons to keep their records secret. Each letter is replaced with a piece of a tic-tac-toe grid or X-shape.',
+        howto: "Two grids hold all 26 letters. Each letter's shape comes from where it sits in its grid. A dot in the middle marks letters from the second grid.",
+        example: 'Letters become symbols you can draw',
+        difficulty: 'MEDIUM',
+        engine: pigpen,
+      },
+      vigenere: {
+        id: 'vigenere', name: 'Vigenère Cipher', icon: Wand, level: 6,
+        color: 'from-violet-500 to-indigo-600', accent: 'text-violet-300', dot: 'bg-violet-400',
+        tagline: 'Caesar with a secret keyword.',
+        story: 'Created in the 1500s and called "le chiffre indéchiffrable" (the unbreakable cipher) for 300 years. Each letter shifts by a different amount, set by a keyword.',
+        howto: 'Pick a keyword like KEY. The first letter shifts by K (10), second by E (4), third by Y (24), then it loops back to K. Cracking it without the keyword is HARD.',
+        example: 'HELLO with key KEY → RIJVS',
+        difficulty: 'ADVANCED',
+        engine: vigenere,
+      },
+    };
+
+    const CIPHER_LIST = Object.values(CIPHERS).sort((a, b) => a.level - b.level);
+
+    /* ====================================================================
+       MESSAGE BANK — kid-friendly plaintexts for puzzles
+       ==================================================================== */
+    const MESSAGES = [
+      // Short and punchy
+      'MEET AT THE OLD OAK TREE',
+      'THE TREASURE IS UNDER THE BRIDGE',
+      'CODE NAME RED FOX',
+      'MISSION STARTS AT MIDNIGHT',
+      'THE PASSWORD IS APPLE',
+      'WE LEAVE AT DAWN',
+      'BRING THE MAP AND COMPASS',
+      'BEWARE THE WATCHER',
+      'THE KEY IS HIDDEN IN THE LIBRARY',
+      'TRUST NO ONE',
+      'SEND HELP TO THE NORTH GATE',
+      'OPERATION SILVER STAR',
+      'MEET ME BEHIND THE GYM',
+      'THE RIDDLE LIES IN THE STARS',
+      'FOLLOW THE BLUE LANTERN',
+      'HQ IS UNDER ATTACK',
+      'CHECK THE OLD MAILBOX',
+      'BRING REINFORCEMENTS',
+      // Slightly longer
+      'A SECRET MESSAGE IS HIDDEN HERE',
+      'CRYPTOGRAPHY CAN BE FUN',
+      'EVERY CODE HAS A KEY',
+      'BREAKING CIPHERS TAKES PRACTICE',
+      'THE BEST SPIES STAY HIDDEN',
+      'MATH IS THE SECRET WEAPON',
+      // Famous quotes/easter eggs
+      'HOUSTON WE HAVE A PROBLEM',
+      'BEAM ME UP SCOTTY',
+      'THE FORCE IS WITH YOU',
+      'ELEMENTARY MY DEAR WATSON',
+      'I AM YOUR FATHER',
+      'WHAT WE KNOW IS A DROP',
+      'KNOWLEDGE IS POWER',
+      'WAKE UP NEO',
+    ];
+
+    const KEYWORDS = ['KEY','SECRET','SPY','ENIGMA','CODE','APOLLO','MOON','HACKER','LOCK','PUZZLE','RIDDLE','GHOST'];
+
+    /* ====================================================================
+       ACHIEVEMENTS
+       ==================================================================== */
+    const ACHIEVEMENTS = [
+      { id:'first',   name:'First Crack',       desc:'Solve your first puzzle',         icon:Sparkles, check:s=>s.solved>=1 },
+      { id:'ten',     name:'Cipher Apprentice', desc:'Solve 10 puzzles',                icon:KeyRound, check:s=>s.solved>=10 },
+      { id:'fifty',   name:'Cipher Master',     desc:'Solve 50 puzzles',                icon:Crown,    check:s=>s.solved>=50 },
+      { id:'allciph', name:'Polyglot',          desc:'Solve at least one of every cipher type', icon:Brain, check:s=>Object.keys(CIPHERS).every(c=>s.solvedByType[c]>0) },
+      { id:'reverse', name:'Backward Brain',    desc:'Solve 5 reverse ciphers',         icon:ArrowRight, check:s=>s.solvedByType.reverse>=5 },
+      { id:'caesar',  name:'Hail Caesar',       desc:'Solve 5 Caesar ciphers',          icon:Hash,     check:s=>s.solvedByType.caesar>=5 },
+      { id:'morse',   name:'Telegraph Operator',desc:'Solve 5 Morse codes',             icon:Binary,   check:s=>s.solvedByType.morse>=5 },
+      { id:'vigen',   name:'Indéchiffrable',    desc:'Solve a Vigenère cipher',         icon:Wand,     check:s=>s.solvedByType.vigenere>=1 },
+      { id:'streak',  name:'On Fire',           desc:'Solve 5 in a row',                icon:Flame,    check:s=>s.bestStreak>=5 },
+      { id:'speed',   name:'Lightning Fingers', desc:'Win Speed mode with 8+',          icon:Zap,      check:s=>s.speedHigh>=8 },
+      { id:'mystery', name:'Codebreaker',       desc:'Solve a Mystery puzzle',          icon:Eye,      check:s=>s.mysterySolved>=1 },
+      { id:'l5',      name:'Cipher Adept',      desc:'Reach Level 5',                   icon:Award,    check:s=>Math.floor(s.xp/100)+1>=5 },
+    ];
+
+    /* ====================================================================
+       SHARED REACT COMPONENTS
+       ==================================================================== */
+    function Stat({ icon: Icon, label, value, color }) {
+      return (
+        <div className="stat-chip flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-slate-700/60">
+          <Icon className={`w-4 h-4 ${color}`} />
+          <div className="leading-tight">
+            <div className="stat-label text-[10px] uppercase tracking-widest text-slate-500">{label}</div>
+            <div className={`stat-value font-display text-sm ${color}`}>{value}</div>
+          </div>
+        </div>
+      );
+    }
+
+    function Section({ icon: Icon, title, children, color = 'text-cyan-300' }) {
+      return (
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <Icon className={`w-4 h-4 ${color}`} />
+            <h3 className={`font-display text-xs tracking-[0.2em] uppercase ${color}`}>{title}</h3>
+          </div>
+          {children}
+        </div>
+      );
+    }
+
+    function Card({ icon: Icon, title, children, accent = 'text-cyan-300', accentBg = 'bg-cyan-400/15 border-cyan-400/40' }) {
+      return (
+        <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-8 h-8 grid place-items-center rounded-lg border ${accentBg}`}>
+              <Icon className={`w-4 h-4 ${accent}`} />
+            </div>
+            <h3 className="font-display text-lg tracking-wide text-white">{title}</h3>
+          </div>
+          <p>{children}</p>
+        </div>
+      );
+    }
+
+    function GameHeader({ onExit, title, score, streak, extra }) {
+      return (
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={onExit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-cyan-400/50 text-sm">
+            <ChevronLeft className="w-4 h-4" /> Exit
+          </button>
+          <h2 className="font-display text-xl sm:text-2xl tracking-wider text-white">{title}</h2>
+          <div className="ml-auto flex items-center gap-4 flex-wrap">
+            {score !== undefined && <div className="text-sm text-slate-400">Score <span className="font-display text-amber-300">{score}</span></div>}
+            {streak > 0 && <div className="flex items-center gap-1 text-sm text-orange-300"><Flame className="w-4 h-4" /> {streak}</div>}
+            {extra}
+          </div>
+        </div>
+      );
+    }
+
+    function AchievementToast({ toast }) {
+      const Icon = toast.icon;
+      return (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-slideup">
+          <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-gradient-to-r from-amber-500/95 to-fuchsia-500/95 text-slate-900 shadow-[0_0_40px_rgba(251,191,36,0.5)] border border-amber-200/40">
+            <div className="w-10 h-10 grid place-items-center rounded-xl bg-slate-900/85 text-amber-300">
+              <Icon className="w-5 h-5" strokeWidth={2.4} />
+            </div>
+            <div>
+              <div className="text-[10px] tracking-[0.25em] font-display uppercase">Trophy Unlocked</div>
+              <div className="font-display text-lg tracking-wider leading-tight">{toast.name}</div>
+              <div className="text-xs leading-tight opacity-80">{toast.desc}</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       PIGPEN VISUAL — renders the actual symbol shapes for a token
+       ==================================================================== */
+    function PigpenSymbol({ token, size = 32 }) {
+      // Token format: T0, T1, ..., T8, T0d, ..., X0, X1, X2, X3, X0d, ...
+      if (token === '/') return <span className="inline-block px-1 text-slate-500" style={{width: size}}>/</span>;
+      if (!token) return null;
+      const grid = token[0];
+      const dot = token.endsWith('d');
+      const pos = parseInt(token.slice(1, dot ? -1 : undefined), 10);
+      const s = size;
+      const stroke = '#22d3ee';
+      const sw = Math.max(2, s/16);
+
+      if (grid === 'T') {
+        // Tic-tac-toe based shape: pos 0-8 is row*3+col in a 3x3 grid
+        // Each shape shows the BORDERS that surround that cell
+        const row = Math.floor(pos / 3);
+        const col = pos % 3;
+        // The shape is the cell's "open sides" — top, right, bottom, left
+        // Corner cells: 2 walls. Edge cells: 3 walls. Center: 4 walls.
+        const lines = [];
+        // Build cell at unit coords (0,0) to (1,1) inside a small grid box
+        const unit = s * 0.7;
+        const ox = (s - unit) / 2;
+        const oy = (s - unit) / 2;
+        const cw = unit / 3;
+        const cellLeft = ox + col * cw;
+        const cellTop = oy + row * cw;
+        // Top border drawn if row > 0 (there is a wall above this cell from the inner grid)
+        if (row > 0) lines.push([cellLeft, cellTop, cellLeft + cw, cellTop]);
+        if (row < 2) lines.push([cellLeft, cellTop + cw, cellLeft + cw, cellTop + cw]);
+        if (col > 0) lines.push([cellLeft, cellTop, cellLeft, cellTop + cw]);
+        if (col < 2) lines.push([cellLeft + cw, cellTop, cellLeft + cw, cellTop + cw]);
+        return (
+          <svg width={s} height={s} className="inline-block align-middle">
+            {lines.map(([x1,y1,x2,y2], i) => (
+              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+            ))}
+            {dot && <circle cx={cellLeft + cw/2} cy={cellTop + cw/2} r={sw*0.9} fill={stroke} />}
+          </svg>
+        );
+      } else {
+        // X-shape: 4 triangular regions. pos 0=top, 1=right, 2=bottom, 3=left
+        const cx = s / 2, cy = s / 2;
+        const r = s * 0.32;
+        const lines = [];
+        if (pos === 0) { // Top region: ▲
+          lines.push([cx - r, cy - r, cx, cy]);
+          lines.push([cx, cy, cx + r, cy - r]);
+        } else if (pos === 1) { // Right: ▶
+          lines.push([cx + r, cy - r, cx, cy]);
+          lines.push([cx, cy, cx + r, cy + r]);
+        } else if (pos === 2) { // Bottom: ▼
+          lines.push([cx - r, cy + r, cx, cy]);
+          lines.push([cx, cy, cx + r, cy + r]);
+        } else if (pos === 3) { // Left: ◀
+          lines.push([cx - r, cy - r, cx, cy]);
+          lines.push([cx, cy, cx - r, cy + r]);
+        }
+        return (
+          <svg width={s} height={s} className="inline-block align-middle">
+            {lines.map(([x1,y1,x2,y2], i) => (
+              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+            ))}
+            {dot && <circle cx={cx} cy={cy} r={sw*0.9} fill={stroke} />}
+          </svg>
+        );
+      }
+    }
+
+    function CipherDisplay({ cipher, ciphertext, size = 28 }) {
+      // Render the encoded text. Pigpen needs symbols, others are text.
+      if (cipher === 'pigpen') {
+        return (
+          <div className="flex flex-wrap items-center gap-1 justify-center">
+            {ciphertext.split(' ').map((tok, i) => (
+              <span key={i} className={tok === '/' ? 'mx-1.5' : ''}>
+                <PigpenSymbol token={tok} size={size} />
+              </span>
+            ))}
+          </div>
+        );
+      }
+      return <div className="font-mono text-cyan-200 text-lg sm:text-xl break-all leading-relaxed tracking-wider">{ciphertext}</div>;
+    }
+
+    /* ====================================================================
+       APP — main shell with state, persistence, install, achievements
+       ==================================================================== */
+    function App() {
+      const [tab, setTab] = useState('academy');
+      const [activeMode, setActiveMode] = useState(null);
+      const [activeLesson, setActiveLesson] = useState(null);
+      const [xp, setXp] = useState(0);
+      const [solved, setSolved] = useState(0);
+      const [solvedByType, setSolvedByType] = useState({
+        reverse: 0, caesar: 0, atbash: 0, morse: 0, pigpen: 0, vigenere: 0
+      });
+      const [bestStreak, setBestStreak] = useState(0);
+      const [speedHigh, setSpeedHigh] = useState(0);
+      const [mysterySolved, setMysterySolved] = useState(0);
+      const [unlockedAchievements, setUnlockedAchievements] = useState(new Set());
+      const [completedLessons, setCompletedLessons] = useState(new Set());
+      const [toast, setToast] = useState(null);
+      const [xpFloater, setXpFloater] = useState(null);
+      const [hydrated, setHydrated] = useState(false);
+      const [installPrompt, setInstallPrompt] = useState(null);
+
+      const STORAGE_KEY = 'codebreaker-v1';
+      const state = { xp, solved, solvedByType, bestStreak, speedHigh, mysterySolved };
+      const level = xpToLevel(xp);
+      const lvlPct = xpInLevel(xp);
+
+      useEffect(() => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const d = JSON.parse(raw);
+            if (typeof d.xp === 'number') setXp(d.xp);
+            if (typeof d.solved === 'number') setSolved(d.solved);
+            if (d.solvedByType) setSolvedByType(prev => ({ ...prev, ...d.solvedByType }));
+            if (typeof d.bestStreak === 'number') setBestStreak(d.bestStreak);
+            if (typeof d.speedHigh === 'number') setSpeedHigh(d.speedHigh);
+            if (typeof d.mysterySolved === 'number') setMysterySolved(d.mysterySolved);
+            if (Array.isArray(d.unlocked)) setUnlockedAchievements(new Set(d.unlocked));
+            if (Array.isArray(d.lessons)) setCompletedLessons(new Set(d.lessons));
+          }
+        } catch {}
+        setHydrated(true);
+      }, []);
+
+      useEffect(() => {
+        if (!hydrated) return;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            xp, solved, solvedByType, bestStreak, speedHigh, mysterySolved,
+            unlocked: [...unlockedAchievements], lessons: [...completedLessons]
+          }));
+        } catch {}
+      }, [hydrated, xp, solved, solvedByType, bestStreak, speedHigh, mysterySolved, unlockedAchievements, completedLessons]);
+
+      useEffect(() => {
+        ACHIEVEMENTS.forEach(a => {
+          if (!unlockedAchievements.has(a.id) && a.check(state)) {
+            setUnlockedAchievements(prev => new Set(prev).add(a.id));
+            setToast({ name: a.name, desc: a.desc, icon: a.icon });
+            setTimeout(() => setToast(null), 4200);
+          }
+        });
+      }, [xp, solved, solvedByType, bestStreak, speedHigh, mysterySolved]);
+
+      useEffect(() => {
+        const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
+        window.addEventListener('beforeinstallprompt', handler);
+        window.addEventListener('appinstalled', () => setInstallPrompt(null));
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+      }, []);
+
+      const installApp = async () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        await installPrompt.userChoice;
+        setInstallPrompt(null);
+      };
+
+      const grantXp = (amount, reason = '') => {
+        setXp(x => x + amount);
+        setXpFloater({ amount, reason, id: Date.now() });
+        setTimeout(() => setXpFloater(null), 1400);
+      };
+
+      const recordSolve = (cipherType) => {
+        setSolved(s => s + 1);
+        setSolvedByType(p => ({ ...p, [cipherType]: (p[cipherType] || 0) + 1 }));
+      };
+
+      const completeLesson = (cipherId) => {
+        if (!completedLessons.has(cipherId)) {
+          setCompletedLessons(prev => new Set(prev).add(cipherId));
+          grantXp(20, `${CIPHERS[cipherId].name} learned!`);
+        }
+      };
+
+      const resetProgress = () => {
+        if (!confirm('Reset all progress? This cannot be undone.')) return;
+        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+        setXp(0); setSolved(0);
+        setSolvedByType({ reverse:0, caesar:0, atbash:0, morse:0, pigpen:0, vigenere:0 });
+        setBestStreak(0); setSpeedHigh(0); setMysterySolved(0);
+        setUnlockedAchievements(new Set()); setCompletedLessons(new Set());
+      };
+
+      return (
+        <div className="min-h-screen w-full text-slate-100 relative overflow-x-hidden font-body">
+          <BackgroundFx />
+          <header className="relative z-10 border-b border-cyan-400/20 bg-slate-950/60 backdrop-blur-xl">
+            <div className="header-pad max-w-[1400px] mx-auto px-3 sm:px-6 py-4 flex flex-wrap items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-3">
+                <div className="relative w-10 h-10 sm:w-12 sm:h-12 grid place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-fuchsia-500 shadow-[0_0_30px_rgba(34,211,238,0.5)]">
+                  <Lock className="w-5 h-5 sm:w-7 sm:h-7 text-slate-900" strokeWidth={2.5} />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+                <div>
+                  <h1 className="font-display text-lg sm:text-2xl tracking-[0.18em] leading-none bg-gradient-to-r from-cyan-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">
+                    CODEBREAKER
+                  </h1>
+                  <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-slate-400 mt-1">CRACK THE CIPHER</p>
+                </div>
+              </div>
+              <div className="ml-auto flex items-center gap-2 sm:gap-5 flex-wrap">
+                {installPrompt && (
+                  <button onClick={installApp}
+                    className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-slate-900 font-display text-xs tracking-widest flex items-center gap-1.5 shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:scale-105 transition-transform">
+                    <Sparkles className="w-3.5 h-3.5" /> INSTALL
+                  </button>
+                )}
+                <Stat icon={Sparkles} label="XP"       value={xp}      color="text-cyan-300" />
+                <Stat icon={Star}     label="Level"    value={level}   color="text-amber-300" />
+                <Stat icon={Unlock}   label="Solved"   value={solved}  color="text-emerald-300" />
+                <Stat icon={Trophy}   label="Trophies" value={`${unlockedAchievements.size}/${ACHIEVEMENTS.length}`} color="text-fuchsia-300" />
+              </div>
+            </div>
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-3">
+              <div className="h-1.5 rounded-full bg-slate-800/80 overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-amber-400 transition-all duration-700"
+                     style={{ width: `${lvlPct}%` }} />
+              </div>
+            </div>
+            <nav className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-3 flex gap-2 flex-wrap">
+              {[
+                { id:'academy',  label:'Academy',     icon:BookOpen },
+                { id:'modes',    label:'Game Modes',  icon:Target },
+                { id:'encoder',  label:'Encoder',     icon:Wand },
+                { id:'trophy',   label:'Trophies',    icon:Trophy },
+                { id:'about',    label:'How To Play', icon:Lightbulb },
+              ].map(t => (
+                <button key={t.id} onClick={() => { setTab(t.id); setActiveMode(null); setActiveLesson(null); }}
+                  className={`group px-4 py-2 rounded-lg flex items-center gap-2 text-sm tracking-wider uppercase transition-all border ${
+                    tab === t.id
+                      ? 'bg-cyan-400/15 border-cyan-400/60 text-cyan-200 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+                      : 'border-slate-700/60 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+                  }`}>
+                  <t.icon className="w-4 h-4" />
+                  <span className="font-display text-xs">{t.label}</span>
+                </button>
+              ))}
+            </nav>
+          </header>
+          <main className="relative z-10 max-w-[1400px] mx-auto px-2 sm:px-6 py-6">
+            {tab === 'academy' && !activeLesson && (
+              <Academy completedLessons={completedLessons} onStart={setActiveLesson} />
+            )}
+            {tab === 'academy' && activeLesson && (
+              <Lesson cipher={activeLesson} onBack={() => setActiveLesson(null)}
+                onComplete={completeLesson} grantXp={grantXp} recordSolve={recordSolve} />
+            )}
+
+            {tab === 'modes' && !activeMode && <ModesHub onStart={setActiveMode} />}
+            {tab === 'modes' && activeMode === 'decode' && (
+              <DecodeChallenge onExit={() => setActiveMode(null)}
+                grantXp={grantXp} recordSolve={recordSolve}
+                bestStreak={bestStreak} setBestStreak={setBestStreak} />
+            )}
+            {tab === 'modes' && activeMode === 'mystery' && (
+              <MysteryMode onExit={() => setActiveMode(null)}
+                grantXp={grantXp} recordSolve={recordSolve}
+                bestStreak={bestStreak} setBestStreak={setBestStreak}
+                onMysterySolve={() => setMysterySolved(m => m + 1)} />
+            )}
+            {tab === 'modes' && activeMode === 'speed' && (
+              <SpeedMode onExit={() => setActiveMode(null)}
+                grantXp={grantXp} recordSolve={recordSolve}
+                speedHigh={speedHigh} setSpeedHigh={setSpeedHigh} />
+            )}
+
+            {tab === 'encoder' && <Encoder />}
+            {tab === 'trophy' && <AchievementsView state={state} unlocked={unlockedAchievements} />}
+            {tab === 'about' && <AboutView resetProgress={resetProgress} />}
+          </main>
+          {toast && <AchievementToast toast={toast} />}
+          {xpFloater && (
+            <div key={xpFloater.id} className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] pointer-events-none">
+              <div className="px-4 py-2 rounded-full bg-cyan-500/95 text-slate-900 font-display tracking-wider text-sm shadow-[0_0_30px_rgba(34,211,238,0.7)] animate-xpfloat">
+                +{xpFloater.amount} XP {xpFloater.reason && <span className="opacity-90 normal-case font-body ml-1">{xpFloater.reason}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       ACADEMY — list of cipher lessons
+       ==================================================================== */
+    function Academy({ completedLessons, onStart }) {
+      return (
+        <div>
+          <div className="mb-6">
+            <h2 className="font-display text-3xl tracking-wider text-white">Cipher Academy</h2>
+            <p className="text-slate-400 text-sm mt-1">
+              Six ciphers, ranked from easiest to hardest. Each lesson teaches you the cipher, then drops you straight into a puzzle.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {CIPHER_LIST.map(c => {
+              const Icon = c.icon;
+              const done = completedLessons.has(c.id);
+              return (
+                <button key={c.id} onClick={() => onStart(c)}
+                  className="group relative text-left p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60 hover:border-cyan-400/50 transition-all overflow-hidden hover:shadow-[0_0_30px_rgba(34,211,238,0.18)]">
+                  <div className={`absolute -top-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-br ${c.color} opacity-20 blur-2xl group-hover:opacity-40`} />
+                  <div className="relative flex items-start gap-3">
+                    <div className={`w-12 h-12 grid place-items-center rounded-xl bg-gradient-to-br ${c.color} shadow-lg flex-shrink-0`}>
+                      <Icon className="w-6 h-6 text-white" strokeWidth={2.2} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] tracking-widest text-slate-500 font-display">LESSON {c.level}</span>
+                        <span className={`text-[10px] tracking-widest px-1.5 py-0.5 rounded ${c.accent} bg-cyan-400/10 border border-cyan-400/30 font-display`}>{c.difficulty}</span>
+                        {done && <span className="text-[10px] tracking-widest text-emerald-300 px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-400/40 font-display flex items-center gap-1"><Check className="w-3 h-3" strokeWidth={3} /> COMPLETE</span>}
+                      </div>
+                      <h3 className="font-display text-xl text-white tracking-wide mt-1">{c.name}</h3>
+                      <p className="text-slate-300 text-sm mt-1">{c.tagline}</p>
+                      <div className="mt-3 flex items-center gap-1.5 text-cyan-300 text-sm font-display tracking-wider">
+                        START <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       LESSON — teaches one cipher, then has a guided puzzle
+       ==================================================================== */
+    function Lesson({ cipher, onBack, onComplete, grantXp, recordSolve }) {
+      const [phase, setPhase] = useState('learn'); // learn → practice → done
+      const [puzzle, setPuzzle] = useState(null);
+      const [answer, setAnswer] = useState('');
+      const [result, setResult] = useState(null);
+      const [hintsUsed, setHintsUsed] = useState(0);
+
+      useEffect(() => {
+        if (phase === 'practice') generatePuzzle();
+      }, [phase]);
+
+      function generatePuzzle() {
+        const plaintext = rand(MESSAGES.filter(m => m.length <= 30));
+        let ciphertext, key;
+        if (cipher.id === 'caesar') {
+          const shift = 1 + Math.floor(Math.random() * 8);
+          key = shift;
+          ciphertext = cipher.engine.encode(plaintext, shift);
+        } else if (cipher.id === 'vigenere') {
+          key = rand(['KEY', 'SPY', 'CODE']);
+          ciphertext = cipher.engine.encode(plaintext, key);
+        } else {
+          ciphertext = cipher.engine.encode(plaintext);
+        }
+        setPuzzle({ plaintext, ciphertext, key });
+        setAnswer(''); setResult(null); setHintsUsed(0);
+      }
+
+      function check() {
+        if (!puzzle) return;
+        const ok = norm(answer) === norm(puzzle.plaintext);
+        if (ok) {
+          setResult('correct');
+          const pts = Math.max(5, 25 - hintsUsed * 5);
+          grantXp(pts, 'Decoded!');
+          recordSolve(cipher.id);
+        } else {
+          setResult('wrong');
+        }
+      }
+
+      function reveal() {
+        setAnswer(puzzle.plaintext);
+        setHintsUsed(h => h + 1);
+      }
+
+      function finish() {
+        onComplete(cipher.id);
+        setPhase('done');
+      }
+
+      const Icon = cipher.icon;
+
+      if (phase === 'done') {
+        return (
+          <div className="max-w-md mx-auto mt-10 p-8 rounded-2xl bg-slate-900/80 border border-emerald-400/40 text-center shadow-[0_0_40px_rgba(52,211,153,0.25)] animate-slideup">
+            <div className={`w-16 h-16 mx-auto grid place-items-center rounded-2xl bg-gradient-to-br ${cipher.color} shadow-lg`}>
+              <Icon className="w-8 h-8 text-white" strokeWidth={2.4} />
+            </div>
+            <h2 className="mt-4 font-display text-2xl tracking-wider text-white">Lesson Complete</h2>
+            <p className="text-slate-300 mt-2">You learned the {cipher.name}. +20 XP earned.</p>
+            <div className="mt-6 flex gap-3 justify-center">
+              <button onClick={() => { setPhase('learn'); generatePuzzle(); }}
+                className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-display tracking-wider text-sm flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Practice Again
+              </button>
+              <button onClick={onBack} className="px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-500 text-sm">
+                Back to Academy
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="max-w-3xl mx-auto">
+          <button onClick={onBack} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-cyan-400/50 text-sm mb-4">
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+
+          {phase === 'learn' && (
+            <div className="space-y-5">
+              <div className={`p-6 rounded-2xl bg-gradient-to-br ${cipher.color} relative overflow-hidden`}>
+                <div className="absolute -bottom-8 -right-4 opacity-15">
+                  <Icon className="w-40 h-40 text-white" />
+                </div>
+                <div className="relative">
+                  <div className="text-[10px] tracking-widest text-white/80 font-display">LESSON {cipher.level} · {cipher.difficulty}</div>
+                  <h1 className="font-display text-3xl sm:text-4xl text-white tracking-wide mt-1">{cipher.name}</h1>
+                  <p className="text-white/90 text-base mt-2">{cipher.tagline}</p>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+                <Section icon={BookOpen} title="The Story">
+                  <p className="text-slate-200 leading-relaxed">{cipher.story}</p>
+                </Section>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+                <Section icon={KeyRound} title="How It Works">
+                  <p className="text-slate-200 leading-relaxed">{cipher.howto}</p>
+                  {cipher.id !== 'pigpen' && (
+                    <div className="mt-3 p-3 rounded-lg bg-slate-950/70 border border-slate-700/50">
+                      <div className="text-[10px] tracking-widest text-cyan-300 font-display mb-1">EXAMPLE</div>
+                      <div className="font-mono text-cyan-200 text-sm">{cipher.example}</div>
+                    </div>
+                  )}
+                  {cipher.id === 'pigpen' && <PigpenChart />}
+                  {cipher.id === 'morse' && <MorseChart />}
+                  {cipher.id === 'atbash' && <AtbashChart />}
+                </Section>
+              </div>
+
+              <button onClick={() => setPhase('practice')}
+                className="w-full px-6 py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-display tracking-wider text-base flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(34,211,238,0.4)]">
+                READY TO PRACTICE <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {phase === 'practice' && puzzle && (
+            <div className="space-y-5">
+              <div className={`p-5 rounded-2xl bg-gradient-to-br ${cipher.color} relative overflow-hidden`}>
+                <div className="text-[10px] tracking-widest text-white/80 font-display">PUZZLE · {cipher.name}</div>
+                <h2 className="font-display text-xl text-white tracking-wide mt-1">Decode this message</h2>
+                {puzzle.key !== undefined && (
+                  <div className="mt-2 inline-block px-2 py-1 rounded-md bg-black/30 text-white/90 text-xs font-mono">
+                    {cipher.id === 'caesar' ? `Shift: ${puzzle.key}` : `Keyword: ${puzzle.key}`}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 rounded-2xl bg-slate-950/60 border border-cyan-400/30 pulse-glow">
+                <div className="text-[10px] tracking-widest text-cyan-300 font-display mb-3">CIPHERTEXT</div>
+                <CipherDisplay cipher={cipher.id} ciphertext={puzzle.ciphertext} />
+              </div>
+
+              <div>
+                <label className="block">
+                  <div className="text-[10px] tracking-widest text-slate-400 font-display mb-2">YOUR DECODED MESSAGE</div>
+                  <div className="flex gap-2">
+                    <input type="text" value={answer} onChange={e => { setAnswer(e.target.value); setResult(null); }}
+                      onKeyDown={e => { if (e.key === 'Enter') check(); }}
+                      placeholder="Type the plaintext..."
+                      disabled={result === 'correct'}
+                      className={`flex-1 px-4 py-3 rounded-lg bg-slate-900 border focus:outline-none text-base font-mono uppercase tracking-wider ${
+                        result === 'correct' ? 'border-emerald-400' :
+                        result === 'wrong' ? 'border-red-400' :
+                        'border-slate-700 focus:border-cyan-400/60'
+                      }`} />
+                    <button onClick={check} disabled={!answer || result === 'correct'}
+                      className="px-5 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-display tracking-wider text-sm disabled:opacity-40 flex items-center gap-1.5">
+                      <Send className="w-4 h-4" /> CHECK
+                    </button>
+                  </div>
+                </label>
+                {result === 'wrong' && (
+                  <div className="mt-3 p-3 rounded-lg bg-red-500/15 border border-red-400/40 text-red-200 text-sm">
+                    Not quite. Re-read the cipher rules above and try again.
+                  </div>
+                )}
+                {result === 'correct' && (
+                  <div className="mt-3 p-3 rounded-lg bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-sm">
+                    Decoded! Plaintext: <strong className="font-mono">{puzzle.plaintext}</strong>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button onClick={reveal} disabled={result === 'correct'}
+                  className="px-4 py-2 rounded-lg border border-amber-500/40 text-amber-300 hover:bg-amber-500/10 text-sm font-display tracking-wider flex items-center gap-1.5 disabled:opacity-40">
+                  <Eye className="w-4 h-4" /> Reveal (-5 XP)
+                </button>
+                <button onClick={generatePuzzle}
+                  className="px-4 py-2 rounded-lg border border-slate-700 hover:border-cyan-400/50 text-sm flex items-center gap-1.5">
+                  <RefreshCw className="w-4 h-4" /> New Puzzle
+                </button>
+                {result === 'correct' && (
+                  <button onClick={finish}
+                    className="ml-auto px-5 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-900 font-display tracking-wider text-sm flex items-center gap-1.5">
+                    FINISH LESSON <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       Visual reference charts — Morse, Atbash, Pigpen
+       ==================================================================== */
+    function MorseChart() {
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      return (
+        <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+          {letters.map(l => (
+            <div key={l} className="p-2 rounded bg-slate-950/70 border border-slate-700/50 text-center">
+              <div className="font-display text-amber-300 text-sm">{l}</div>
+              <div className="font-mono text-cyan-200 text-xs mt-0.5">{MORSE_MAP[l]}</div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    function AtbashChart() {
+      return (
+        <div className="mt-3 p-3 rounded-lg bg-slate-950/70 border border-slate-700/50 overflow-x-auto">
+          <div className="font-mono text-xs text-slate-400 mb-1">Plain:</div>
+          <div className="font-mono text-cyan-200 tracking-widest mb-2">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</div>
+          <div className="font-mono text-xs text-slate-400 mb-1">Cipher:</div>
+          <div className="font-mono text-fuchsia-300 tracking-widest">Z Y X W V U T S R Q P O N M L K J I H G F E D C B A</div>
+        </div>
+      );
+    }
+    function PigpenChart() {
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      return (
+        <div className="mt-3 grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+          {letters.map(l => {
+            const sh = PIGPEN_ENCODE[l];
+            const tok = (sh.grid === 'tic' ? 'T' : 'X') + sh.pos + (sh.dot ? 'd' : '');
+            return (
+              <div key={l} className="p-1.5 rounded bg-slate-950/70 border border-slate-700/50 text-center flex flex-col items-center">
+                <div className="font-display text-rose-300 text-xs mb-0.5">{l}</div>
+                <PigpenSymbol token={tok} size={28} />
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       MODES HUB
+       ==================================================================== */
+    function ModesHub({ onStart }) {
+      const modes = [
+        { id:'decode',  name:'Decode Challenge', desc:'You know the cipher type. Decode 6 messages in a row.',
+          icon:KeyRound, color:'from-cyan-500 to-blue-600', diff:'CORE' },
+        { id:'mystery', name:'Mystery Cipher',   desc:'You do NOT know the cipher type. Figure it out, then decode.',
+          icon:Eye,      color:'from-fuchsia-500 to-purple-600', diff:'TRICKY' },
+        { id:'speed',   name:'Speed Decode',     desc:'60-second sprint. Decode as many as you can. Wrong = -5 seconds.',
+          icon:Timer,    color:'from-amber-500 to-orange-600', diff:'FAST' },
+      ];
+      return (
+        <div>
+          <div className="mb-6">
+            <h2 className="font-display text-3xl tracking-wider text-white">Game Modes</h2>
+            <p className="text-slate-400 text-sm mt-1">Apply what you learned in Academy. Each mode tests different skills.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {modes.map(m => (
+              <button key={m.id} onClick={() => onStart(m.id)}
+                className="group relative text-left p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60 hover:border-cyan-400/50 transition-all overflow-hidden hover:shadow-[0_0_30px_rgba(34,211,238,0.18)]">
+                <div className={`absolute -top-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-br ${m.color} opacity-20 blur-2xl group-hover:opacity-40`} />
+                <div className={`relative w-12 h-12 grid place-items-center rounded-xl bg-gradient-to-br ${m.color} mb-4 shadow-lg`}>
+                  <m.icon className="w-6 h-6 text-white" strokeWidth={2.2} />
+                </div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-display text-xl text-white tracking-wide">{m.name}</h3>
+                  <span className="text-[10px] tracking-widest text-cyan-300 px-1.5 py-0.5 rounded bg-cyan-400/10 border border-cyan-400/30">{m.diff}</span>
+                </div>
+                <p className="text-slate-400 text-sm leading-relaxed">{m.desc}</p>
+                <div className="mt-4 flex items-center gap-1.5 text-cyan-300 text-sm font-display tracking-wider">
+                  START <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       DECODE CHALLENGE — 6 puzzles, cipher type known, points decay with hints
+       ==================================================================== */
+    function DecodeChallenge({ onExit, grantXp, recordSolve, bestStreak, setBestStreak }) {
+      const ROUNDS = 6;
+      const [round, setRound] = useState(0);
+      const [score, setScore] = useState(0);
+      const [streak, setStreak] = useState(0);
+      const [puzzle, setPuzzle] = useState(null);
+      const [answer, setAnswer] = useState('');
+      const [result, setResult] = useState(null);
+
+      useEffect(() => { newPuzzle(); }, []);
+
+      function newPuzzle() {
+        // Random cipher (excluding pigpen for typing-based decode unless level supports it)
+        const cipher = rand(CIPHER_LIST.filter(c => c.id !== 'pigpen'));
+        const plaintext = rand(MESSAGES.filter(m => m.length <= 30));
+        let ciphertext, key;
+        if (cipher.id === 'caesar') {
+          key = 1 + Math.floor(Math.random() * 12);
+          ciphertext = cipher.engine.encode(plaintext, key);
+        } else if (cipher.id === 'vigenere') {
+          key = rand(KEYWORDS.filter(k => k.length <= 5));
+          ciphertext = cipher.engine.encode(plaintext, key);
+        } else {
+          ciphertext = cipher.engine.encode(plaintext);
+        }
+        setPuzzle({ cipher, plaintext, ciphertext, key });
+        setAnswer(''); setResult(null);
+      }
+
+      function check() {
+        if (!puzzle) return;
+        const ok = norm(answer) === norm(puzzle.plaintext);
+        if (ok) {
+          setResult('correct');
+          setScore(s => s + 1);
+          const ns = streak + 1;
+          setStreak(ns);
+          if (ns > bestStreak) setBestStreak(ns);
+          grantXp(20, 'Cracked!');
+          recordSolve(puzzle.cipher.id);
+          setTimeout(() => {
+            if (round + 1 >= ROUNDS) setRound(ROUNDS);
+            else { setRound(r => r + 1); newPuzzle(); }
+          }, 1400);
+        } else {
+          setResult('wrong');
+          setStreak(0);
+        }
+      }
+
+      function skip() {
+        setStreak(0);
+        if (round + 1 >= ROUNDS) setRound(ROUNDS);
+        else { setRound(r => r + 1); newPuzzle(); }
+      }
+
+      if (round >= ROUNDS) {
+        return (
+          <div className="max-w-md mx-auto mt-10 p-8 rounded-2xl bg-slate-900/80 border border-cyan-400/40 text-center shadow-[0_0_40px_rgba(34,211,238,0.25)] animate-slideup">
+            <Trophy className="w-14 h-14 mx-auto text-amber-300" />
+            <h2 className="mt-3 font-display text-2xl tracking-wider text-white">Mission Complete</h2>
+            <div className="mt-2 text-5xl font-display text-cyan-300">{score}</div>
+            <div className="text-sm tracking-widest text-slate-400 mt-1 uppercase">out of {ROUNDS}</div>
+            <p className="mt-4 text-slate-300">{score >= 4 ? 'Sharp cryptography!' : 'Good run. Keep practicing.'}</p>
+            <div className="mt-6 flex gap-3 justify-center">
+              <button onClick={() => { setRound(0); setScore(0); setStreak(0); newPuzzle(); }}
+                className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-display tracking-wider text-sm flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Play Again
+              </button>
+              <button onClick={onExit} className="px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-500 text-sm">
+                Choose Another Mode
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      if (!puzzle) return null;
+      const Icon = puzzle.cipher.icon;
+
+      return (
+        <div>
+          <GameHeader onExit={onExit} title="Decode Challenge"
+            score={score} streak={streak}
+            extra={<div className="text-sm text-slate-400">Round <span className="font-display text-cyan-300">{round+1}/{ROUNDS}</span></div>} />
+          <div className="mt-6 max-w-3xl mx-auto space-y-5">
+            <div className={`p-5 rounded-2xl bg-gradient-to-br ${puzzle.cipher.color} relative overflow-hidden`}>
+              <div className="flex items-center gap-3 relative">
+                <Icon className="w-8 h-8 text-white" strokeWidth={2.2} />
+                <div>
+                  <div className="text-[10px] tracking-widest text-white/80 font-display">CIPHER TYPE</div>
+                  <h3 className="font-display text-xl text-white tracking-wide">{puzzle.cipher.name}</h3>
+                </div>
+                {puzzle.key !== undefined && (
+                  <div className="ml-auto px-2 py-1 rounded-md bg-black/30 text-white/95 text-xs font-mono">
+                    {puzzle.cipher.id === 'caesar' ? `Shift: ${puzzle.key}` : `Keyword: ${puzzle.key}`}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-slate-950/60 border border-cyan-400/30 pulse-glow">
+              <div className="text-[10px] tracking-widest text-cyan-300 font-display mb-3">CIPHERTEXT</div>
+              <CipherDisplay cipher={puzzle.cipher.id} ciphertext={puzzle.ciphertext} />
+            </div>
+
+            <div>
+              <label className="block">
+                <div className="text-[10px] tracking-widest text-slate-400 font-display mb-2">YOUR ANSWER</div>
+                <div className="flex gap-2">
+                  <input type="text" value={answer} onChange={e => { setAnswer(e.target.value); setResult(null); }}
+                    onKeyDown={e => { if (e.key === 'Enter') check(); }}
+                    placeholder="Decoded plaintext..."
+                    disabled={result === 'correct'}
+                    className={`flex-1 px-4 py-3 rounded-lg bg-slate-900 border focus:outline-none text-base font-mono uppercase tracking-wider ${
+                      result === 'correct' ? 'border-emerald-400' :
+                      result === 'wrong' ? 'border-red-400' :
+                      'border-slate-700 focus:border-cyan-400/60'
+                    }`} />
+                  <button onClick={check} disabled={!answer || result === 'correct'}
+                    className="px-5 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-display tracking-wider text-sm disabled:opacity-40 flex items-center gap-1.5">
+                    <Send className="w-4 h-4" /> CHECK
+                  </button>
+                </div>
+              </label>
+              {result === 'wrong' && <div className="mt-3 p-3 rounded-lg bg-red-500/15 border border-red-400/40 text-red-200 text-sm">Not quite. Try again.</div>}
+              {result === 'correct' && <div className="mt-3 p-3 rounded-lg bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-sm">Cracked! +20 XP</div>}
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={skip} disabled={result === 'correct'}
+                className="px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-500 text-sm flex items-center gap-1.5 disabled:opacity-40">
+                Skip Puzzle
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       MYSTERY MODE — cipher type unknown, kid has to figure it out
+       ==================================================================== */
+    function MysteryMode({ onExit, grantXp, recordSolve, bestStreak, setBestStreak, onMysterySolve }) {
+      const ROUNDS = 5;
+      const [round, setRound] = useState(0);
+      const [score, setScore] = useState(0);
+      const [streak, setStreak] = useState(0);
+      const [puzzle, setPuzzle] = useState(null);
+      const [answer, setAnswer] = useState('');
+      const [guess, setGuess] = useState(null); // which cipher type they think it is
+      const [result, setResult] = useState(null);
+      const [phase, setPhase] = useState('identify'); // identify → decode
+
+      useEffect(() => { newPuzzle(); }, []);
+
+      function newPuzzle() {
+        // Use a wider variety of ciphers including caesar with random shift, no pigpen
+        const cipher = rand(CIPHER_LIST.filter(c => c.id !== 'pigpen' && c.id !== 'vigenere'));
+        const plaintext = rand(MESSAGES.filter(m => m.length <= 28));
+        let ciphertext, key;
+        if (cipher.id === 'caesar') {
+          key = 1 + Math.floor(Math.random() * 12);
+          ciphertext = cipher.engine.encode(plaintext, key);
+        } else {
+          ciphertext = cipher.engine.encode(plaintext);
+        }
+        setPuzzle({ cipher, plaintext, ciphertext, key });
+        setAnswer(''); setGuess(null); setResult(null); setPhase('identify');
+      }
+
+      function pickCipher(c) {
+        if (phase !== 'identify') return;
+        setGuess(c);
+        if (c.id === puzzle.cipher.id) {
+          setPhase('decode');
+          grantXp(10, 'Right cipher!');
+        } else {
+          // Wrong identification: small penalty, still let them try to decode
+          setResult({ phase: 'wrong-cipher', actual: puzzle.cipher });
+        }
+      }
+
+      function continueAfterWrongId() {
+        setResult(null);
+        setPhase('decode');
+      }
+
+      function check() {
+        if (!puzzle) return;
+        const ok = norm(answer) === norm(puzzle.plaintext);
+        if (ok) {
+          setResult({ phase: 'correct' });
+          const bonus = guess && guess.id === puzzle.cipher.id ? 30 : 15;
+          setScore(s => s + 1);
+          const ns = streak + 1;
+          setStreak(ns);
+          if (ns > bestStreak) setBestStreak(ns);
+          grantXp(bonus, 'Mystery solved!');
+          recordSolve(puzzle.cipher.id);
+          onMysterySolve();
+          setTimeout(() => {
+            if (round + 1 >= ROUNDS) setRound(ROUNDS);
+            else { setRound(r => r + 1); newPuzzle(); }
+          }, 1700);
+        } else {
+          setResult({ phase: 'wrong-answer' });
+          setStreak(0);
+        }
+      }
+
+      if (round >= ROUNDS) {
+        return (
+          <div className="max-w-md mx-auto mt-10 p-8 rounded-2xl bg-slate-900/80 border border-fuchsia-400/40 text-center shadow-[0_0_40px_rgba(217,70,239,0.25)] animate-slideup">
+            <Trophy className="w-14 h-14 mx-auto text-amber-300" />
+            <h2 className="mt-3 font-display text-2xl tracking-wider text-white">Mystery Complete</h2>
+            <div className="mt-2 text-5xl font-display text-fuchsia-300">{score}</div>
+            <div className="text-sm tracking-widest text-slate-400 mt-1 uppercase">out of {ROUNDS}</div>
+            <p className="mt-4 text-slate-300">{score >= 3 ? 'You can spot a cipher across a crowded room.' : 'Good run. Identifying ciphers is hard.'}</p>
+            <div className="mt-6 flex gap-3 justify-center">
+              <button onClick={() => { setRound(0); setScore(0); setStreak(0); newPuzzle(); }}
+                className="px-4 py-2 rounded-lg bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-display tracking-wider text-sm flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Play Again
+              </button>
+              <button onClick={onExit} className="px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-500 text-sm">Choose Another Mode</button>
+            </div>
+          </div>
+        );
+      }
+
+      if (!puzzle) return null;
+      const cipherChoices = CIPHER_LIST.filter(c => c.id !== 'pigpen' && c.id !== 'vigenere');
+
+      return (
+        <div>
+          <GameHeader onExit={onExit} title="Mystery Cipher"
+            score={score} streak={streak}
+            extra={<div className="text-sm text-slate-400">Round <span className="font-display text-fuchsia-300">{round+1}/{ROUNDS}</span></div>} />
+          <div className="mt-6 max-w-3xl mx-auto space-y-5">
+            <div className="p-6 rounded-2xl bg-slate-950/60 border border-fuchsia-400/30 pulse-glow">
+              <div className="text-[10px] tracking-widest text-fuchsia-300 font-display mb-3">UNKNOWN CIPHER · DECODE THIS</div>
+              <CipherDisplay cipher={puzzle.cipher.id} ciphertext={puzzle.ciphertext} />
+            </div>
+
+            {phase === 'identify' && !result && (
+              <div>
+                <div className="text-[10px] tracking-widest text-slate-400 font-display mb-2">STEP 1 · WHICH CIPHER IS THIS?</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {cipherChoices.map(c => {
+                    const Icon = c.icon;
+                    return (
+                      <button key={c.id} onClick={() => pickCipher(c)}
+                        className={`p-4 rounded-xl text-left bg-gradient-to-br ${c.color} hover:scale-[1.03] transition-all`}>
+                        <Icon className="w-6 h-6 text-white" strokeWidth={2.2} />
+                        <div className="font-display text-sm text-white mt-2 leading-tight">{c.name}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {result && result.phase === 'wrong-cipher' && (
+              <div className="p-4 rounded-2xl bg-red-500/15 border border-red-400/40">
+                <p className="text-red-200 text-sm">Not quite. The actual cipher is <strong className="text-white">{result.actual.name}</strong>. You can still decode for partial credit.</p>
+                <button onClick={continueAfterWrongId}
+                  className="mt-3 px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-display tracking-wider text-sm">
+                  Continue to Decode
+                </button>
+              </div>
+            )}
+
+            {phase === 'decode' && (
+              <div>
+                <div className="text-[10px] tracking-widest text-slate-400 font-display mb-2">STEP 2 · DECODE THE MESSAGE</div>
+                {puzzle.key !== undefined && guess && guess.id === puzzle.cipher.id && (
+                  <div className="mb-2 inline-block px-2 py-1 rounded-md bg-cyan-500/15 border border-cyan-400/40 text-cyan-200 text-xs font-mono">
+                    {puzzle.cipher.id === 'caesar' ? `Hint: shift = ${puzzle.key}` : `Hint: keyword = ${puzzle.key}`}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input type="text" value={answer} onChange={e => { setAnswer(e.target.value); setResult(null); }}
+                    onKeyDown={e => { if (e.key === 'Enter') check(); }}
+                    placeholder="Plaintext..."
+                    disabled={result && result.phase === 'correct'}
+                    className={`flex-1 px-4 py-3 rounded-lg bg-slate-900 border focus:outline-none text-base font-mono uppercase tracking-wider ${
+                      result && result.phase === 'correct' ? 'border-emerald-400' :
+                      result && result.phase === 'wrong-answer' ? 'border-red-400' :
+                      'border-slate-700 focus:border-fuchsia-400/60'
+                    }`} />
+                  <button onClick={check} disabled={!answer || (result && result.phase === 'correct')}
+                    className="px-5 py-3 rounded-lg bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-display tracking-wider text-sm disabled:opacity-40 flex items-center gap-1.5">
+                    <Send className="w-4 h-4" /> CHECK
+                  </button>
+                </div>
+                {result && result.phase === 'wrong-answer' && <div className="mt-3 p-3 rounded-lg bg-red-500/15 border border-red-400/40 text-red-200 text-sm">Not the right plaintext. Try again.</div>}
+                {result && result.phase === 'correct' && <div className="mt-3 p-3 rounded-lg bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-sm">Solved!</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       SPEED MODE — 60 second sprint with simple ciphers
+       ==================================================================== */
+    function SpeedMode({ onExit, grantXp, recordSolve, speedHigh, setSpeedHigh }) {
+      const [time, setTime] = useState(60);
+      const [score, setScore] = useState(0);
+      const [over, setOver] = useState(false);
+      const [puzzle, setPuzzle] = useState(null);
+      const [answer, setAnswer] = useState('');
+      const [pulse, setPulse] = useState(null);
+
+      useEffect(() => { newPuzzle(); }, []);
+      useEffect(() => {
+        if (over) return;
+        if (time <= 0) {
+          setOver(true);
+          grantXp(score * 5, 'Speed bonus!');
+          if (score > speedHigh) setSpeedHigh(score);
+          return;
+        }
+        const t = setTimeout(() => setTime(s => s - 1), 1000);
+        return () => clearTimeout(t);
+      }, [time, over]);
+
+      function newPuzzle() {
+        // Quicker ciphers only, short messages
+        const easyCiphers = ['reverse', 'caesar', 'atbash'];
+        const cipherId = rand(easyCiphers);
+        const cipher = CIPHERS[cipherId];
+        const plaintext = rand(MESSAGES.filter(m => m.length <= 22));
+        let ciphertext, key;
+        if (cipherId === 'caesar') {
+          key = 1 + Math.floor(Math.random() * 5); // small shifts only
+          ciphertext = cipher.engine.encode(plaintext, key);
+        } else {
+          ciphertext = cipher.engine.encode(plaintext);
+        }
+        setPuzzle({ cipher, plaintext, ciphertext, key });
+        setAnswer('');
+      }
+
+      function check() {
+        if (!puzzle || over) return;
+        const ok = norm(answer) === norm(puzzle.plaintext);
+        if (ok) {
+          setScore(s => s + 1);
+          recordSolve(puzzle.cipher.id);
+          setPulse('green');
+          setTimeout(() => setPulse(null), 250);
+          newPuzzle();
+        } else {
+          setTime(t => Math.max(0, t - 5));
+          setPulse('red');
+          setTimeout(() => setPulse(null), 250);
+        }
+      }
+
+      function skip() {
+        if (over) return;
+        setTime(t => Math.max(0, t - 3));
+        newPuzzle();
+      }
+
+      if (over) {
+        return (
+          <div className="max-w-md mx-auto mt-10 p-8 rounded-2xl bg-slate-900/80 border border-amber-400/40 text-center shadow-[0_0_40px_rgba(251,191,36,0.25)] animate-slideup">
+            <Trophy className="w-14 h-14 mx-auto text-amber-300" />
+            <h2 className="mt-3 font-display text-2xl tracking-wider text-white">Time&apos;s Up</h2>
+            <div className="mt-2 text-5xl font-display text-amber-300">{score}</div>
+            <div className="text-sm tracking-widest text-slate-400 mt-1 uppercase">decoded</div>
+            <p className="mt-4 text-slate-300">{score >= 8 ? 'Lightning fingers!' : score >= 5 ? 'Solid pace.' : 'Try again, you can go faster.'}</p>
+            {score > speedHigh && <p className="mt-2 text-amber-300 font-display tracking-wider text-sm">NEW HIGH SCORE!</p>}
+            <div className="mt-6 flex gap-3 justify-center">
+              <button onClick={() => { setScore(0); setTime(60); setOver(false); newPuzzle(); }}
+                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-display tracking-wider text-sm flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Play Again
+              </button>
+              <button onClick={onExit} className="px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-500 text-sm">Choose Another Mode</button>
+            </div>
+          </div>
+        );
+      }
+
+      if (!puzzle) return null;
+      const Icon = puzzle.cipher.icon;
+
+      return (
+        <div>
+          <GameHeader onExit={onExit} title="Speed Decode"
+            score={score}
+            extra={
+              <div className={`flex items-center gap-2 ${time <= 10 ? 'text-red-400 animate-pulse' : 'text-amber-300'}`}>
+                <Timer className="w-4 h-4" />
+                <span className="font-display text-lg tabular-nums">{time}s</span>
+              </div>
+            } />
+          <div className="mt-6 max-w-3xl mx-auto space-y-4">
+            <div className={`p-3 rounded-xl bg-gradient-to-br ${puzzle.cipher.color} flex items-center gap-3`}>
+              <Icon className="w-5 h-5 text-white" />
+              <div className="font-display text-sm text-white tracking-wide">{puzzle.cipher.name}</div>
+              {puzzle.key !== undefined && (
+                <div className="ml-auto px-2 py-1 rounded-md bg-black/30 text-white/95 text-xs font-mono">
+                  Shift: {puzzle.key}
+                </div>
+              )}
+            </div>
+            <div className={`p-6 rounded-2xl bg-slate-950/60 border-2 transition-colors ${
+              pulse === 'green' ? 'border-emerald-400' : pulse === 'red' ? 'border-red-400' : 'border-amber-400/30'
+            }`}>
+              <div className="text-[10px] tracking-widest text-amber-300 font-display mb-3">CIPHERTEXT</div>
+              <CipherDisplay cipher={puzzle.cipher.id} ciphertext={puzzle.ciphertext} />
+            </div>
+            <div className="flex gap-2">
+              <input type="text" value={answer} onChange={e => setAnswer(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') check(); }}
+                autoFocus
+                placeholder="Type the plaintext and hit Enter..."
+                className="flex-1 px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 focus:border-amber-400/60 focus:outline-none text-base font-mono uppercase tracking-wider" />
+              <button onClick={check} disabled={!answer}
+                className="px-5 py-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-display tracking-wider text-sm disabled:opacity-40">
+                GO
+              </button>
+            </div>
+            <div className="flex justify-between items-center text-xs text-slate-500">
+              <button onClick={skip} className="text-slate-400 hover:text-amber-300">Skip (-3s)</button>
+              <span>Wrong answer = -5s</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       ENCODER — type a message, see it in all 6 ciphers at once
+       ==================================================================== */
+    function Encoder() {
+      const [text, setText] = useState('');
+      const [caesarShift, setCaesarShift] = useState(3);
+      const [vigKey, setVigKey] = useState('KEY');
+      const cleaned = text.toUpperCase().replace(/[^A-Z0-9 ]/g, '');
+
+      const outputs = [
+        { cipher: CIPHERS.reverse,  text: cleaned ? CIPHERS.reverse.engine.encode(cleaned) : '' },
+        { cipher: CIPHERS.caesar,   text: cleaned ? CIPHERS.caesar.engine.encode(cleaned, caesarShift) : '' },
+        { cipher: CIPHERS.atbash,   text: cleaned ? CIPHERS.atbash.engine.encode(cleaned) : '' },
+        { cipher: CIPHERS.morse,    text: cleaned ? CIPHERS.morse.engine.encode(cleaned) : '' },
+        { cipher: CIPHERS.pigpen,   text: cleaned ? CIPHERS.pigpen.engine.encode(cleaned) : '' },
+        { cipher: CIPHERS.vigenere, text: cleaned ? CIPHERS.vigenere.engine.encode(cleaned, vigKey) : '' },
+      ];
+
+      function copy(s) {
+        try { navigator.clipboard.writeText(s); } catch {}
+      }
+
+      return (
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <h2 className="font-display text-3xl tracking-wider text-white">Encoder</h2>
+            <p className="text-slate-400 text-sm mt-1">Type a message. Watch it transform into all six ciphers in real time.</p>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-slate-900/70 border border-cyan-400/30 mb-6">
+            <label className="block">
+              <span className="font-display text-xs tracking-widest text-cyan-300">YOUR PLAINTEXT</span>
+              <input type="text" value={text} onChange={e => setText(e.target.value)}
+                placeholder="Type a secret message..." maxLength="60"
+                className="mt-2 w-full px-4 py-3 rounded-lg bg-slate-950/80 border border-slate-700 focus:border-cyan-400/60 focus:outline-none text-lg font-mono uppercase tracking-wider" />
+            </label>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <label className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-display tracking-wider">CAESAR SHIFT</span>
+                <input type="number" min="1" max="25" value={caesarShift}
+                  onChange={e => setCaesarShift(Math.max(1, Math.min(25, Number(e.target.value) || 1)))}
+                  className="w-16 px-2 py-1 rounded bg-slate-950 border border-slate-700 text-cyan-300 font-mono text-sm" />
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-display tracking-wider">VIGENÈRE KEY</span>
+                <input type="text" value={vigKey} maxLength="12"
+                  onChange={e => setVigKey(e.target.value.toUpperCase().replace(/[^A-Z]/g, '') || 'KEY')}
+                  className="w-32 px-2 py-1 rounded bg-slate-950 border border-slate-700 text-violet-300 font-mono text-sm uppercase" />
+              </label>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {outputs.map(({ cipher, text }) => {
+              const Icon = cipher.icon;
+              return (
+                <div key={cipher.id} className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-8 h-8 grid place-items-center rounded-lg bg-gradient-to-br ${cipher.color}`}>
+                      <Icon className="w-4 h-4 text-white" strokeWidth={2.2} />
+                    </div>
+                    <div className={`font-display text-sm tracking-wider ${cipher.accent}`}>{cipher.name.toUpperCase()}</div>
+                    {text && cipher.id !== 'pigpen' && (
+                      <button onClick={() => copy(text)}
+                        className="ml-auto px-2 py-1 rounded text-[10px] tracking-widest text-slate-400 hover:text-cyan-300 border border-slate-700 hover:border-cyan-400/50 font-display">
+                        COPY
+                      </button>
+                    )}
+                  </div>
+                  {text ? (
+                    <CipherDisplay cipher={cipher.id} ciphertext={text} size={cipher.id === 'pigpen' ? 24 : undefined} />
+                  ) : (
+                    <div className="text-slate-600 text-sm italic">Waiting for input...</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    /* ====================================================================
+       Achievements + About
+       ==================================================================== */
+    function AchievementsView({ state, unlocked }) {
+      return (
+        <div>
+          <h2 className="font-display text-3xl tracking-wider text-white mb-1">Trophy Cabinet</h2>
+          <p className="text-slate-400 text-sm mb-6">Unlocked {unlocked.size} of {ACHIEVEMENTS.length} trophies</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {ACHIEVEMENTS.map(a => {
+              const earned = unlocked.has(a.id);
+              const Icon = a.icon;
+              return (
+                <div key={a.id} className={`relative p-5 rounded-2xl border transition-all ${
+                  earned
+                    ? 'bg-gradient-to-br from-amber-500/15 to-fuchsia-500/15 border-amber-400/50 shadow-[0_0_25px_rgba(251,191,36,0.2)]'
+                    : 'bg-slate-900/60 border-slate-700/50'
+                }`}>
+                  <div className={`w-11 h-11 grid place-items-center rounded-xl mb-3 ${
+                    earned ? 'bg-gradient-to-br from-amber-400 to-fuchsia-500 text-slate-900' : 'bg-slate-800 text-slate-600'
+                  }`}>
+                    {earned ? <Icon className="w-6 h-6" strokeWidth={2.4} /> : <Lock className="w-5 h-5" />}
+                  </div>
+                  <h3 className={`font-display text-lg tracking-wide ${earned ? 'text-amber-200' : 'text-slate-400'}`}>{a.name}</h3>
+                  <p className="text-sm text-slate-400 mt-1">{a.desc}</p>
+                  {earned && <div className="absolute top-3 right-3 text-[10px] tracking-widest text-amber-300 font-display">UNLOCKED</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function AboutView({ resetProgress }) {
+      return (
+        <div className="max-w-3xl mx-auto">
+          <h2 className="font-display text-3xl tracking-wider text-white mb-4">How To Play</h2>
+          <div className="space-y-4 text-slate-300 leading-relaxed">
+            <Card icon={BookOpen} title="Start with Academy">
+              The Academy teaches you each cipher one at a time, easiest first. Each lesson explains the cipher, shows you a chart, then drops you into a practice puzzle. Finish all 6 lessons to unlock the Polyglot trophy.
+            </Card>
+            <Card icon={Target} title="Then test yourself in Game Modes">
+              Decode Challenge gives you the cipher type and tests speed and accuracy. Mystery Cipher hides the type so you have to figure it out first. Speed Decode is a 60-second arcade sprint.
+            </Card>
+            <Card icon={Wand} title="Use the Encoder for fun">
+              Type a message and see it instantly transformed into all 6 ciphers. Send your friends a Caesar-encoded note. Make a pigpen treasure map.
+            </Card>
+            <Card icon={Trophy} title="Collect 12 trophies">
+              Solve a Vigenère cipher (the &quot;unbreakable&quot; one). Get a 5-streak. Reach Level 5. Solve 50 puzzles. The achievements panel shows everything you can unlock.
+            </Card>
+            <Card icon={Sparkles} title="Install on your phone">
+              On Android, tap INSTALL in the header. On iPhone, use Safari Share → Add to Home Screen. The app installs and works offline after first visit.
+            </Card>
+            <div className="p-5 rounded-2xl bg-red-500/10 border border-red-400/30">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 grid place-items-center rounded-lg bg-red-400/15 border border-red-400/40">
+                  <RefreshCw className="w-4 h-4 text-red-300" />
+                </div>
+                <h3 className="font-display text-lg tracking-wide text-white">Reset Progress</h3>
+              </div>
+              <p className="mb-3">Wipe all XP, completed lessons, and trophies and start over.</p>
+              <button onClick={resetProgress} className="px-4 py-2 rounded-lg bg-red-500/80 hover:bg-red-500 text-white font-display text-xs tracking-widest">RESET EVERYTHING</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function BackgroundFx() {
+      return (
+        <>
+          <div className="fixed inset-0 -z-10 bg-[#050616]" />
+          <div className="fixed inset-0 -z-10 opacity-50" style={{
+            background: 'radial-gradient(900px 600px at 20% -10%, rgba(34,211,238,0.18), transparent 60%), radial-gradient(900px 700px at 110% 10%, rgba(217,70,239,0.16), transparent 60%), radial-gradient(800px 600px at 50% 130%, rgba(139,92,246,0.10), transparent 60%)'
+          }} />
+          <div className="fixed inset-0 -z-10" style={{
+            backgroundImage: 'linear-gradient(rgba(34,211,238,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.05) 1px, transparent 1px)',
+            backgroundSize: '32px 32px',
+            maskImage: 'radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent)',
+            WebkitMaskImage: 'radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent)'
+          }} />
+        </>
+      );
+    }
+
+    /* ====================================================================
+       MOUNT
+       ==================================================================== */
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+    requestAnimationFrame(() => {
+      const boot = document.getElementById('boot');
+      if (boot) { boot.style.opacity = '0'; setTimeout(() => boot.remove(), 450); }
+    });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

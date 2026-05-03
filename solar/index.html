@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solar Voyager · Cosmic Explorer</title>
+  <meta name="description" content="Interactive solar system explorer. Discover 20 planets, moons, and missions. Calculate your weight on every world. Play 4 games and unlock trophies." />
+
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#020617" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Solar Voyager" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+
+  <style>
+    html, body { background: #020617; min-height: 100vh; }
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #f1f5f9; }
+    .font-display { font-family: 'Orbitron', system-ui, sans-serif; letter-spacing: 0.02em; }
+    .font-body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .font-fact { font-family: 'Caveat', cursive; }
+
+    #boot {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      z-index: 999; background: #020617; transition: opacity 0.4s;
+    }
+    #boot .ring {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 3px solid rgba(251,191,36,0.2);
+      border-top-color: #fbbf24;
+      animation: spin 0.9s linear infinite;
+    }
+    #boot p {
+      margin-top: 18px; font-family: 'Orbitron', sans-serif;
+      letter-spacing: 0.3em; font-size: 11px; color: #fcd34d;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 640px) {
+      .stat-chip { padding: 4px 8px !important; }
+      .stat-chip .stat-label { display: none; }
+      .stat-chip .stat-value { font-size: 13px !important; }
+      .header-pad { padding-top: 10px !important; padding-bottom: 6px !important; }
+    }
+
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15,23,42,0.4); border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(251,191,36,0.4); border-radius: 4px; }
+
+    @keyframes fadein { from { opacity: 0 } to { opacity: 1 } }
+    .animate-fadein { animation: fadein .25s ease-out }
+    @keyframes slideup {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slideup { animation: slideup .35s cubic-bezier(0.2, 0.7, 0.3, 1); }
+    @keyframes slidein {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .animate-slidein { animation: slidein .3s ease-out; }
+    @keyframes xpfloat {
+      0%   { opacity: 0; transform: translate(-50%, 10px) scale(0.85); }
+      20%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      80%  { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -28px) scale(0.95); }
+    }
+    .animate-xpfloat { animation: xpfloat 1.4s ease-out forwards; }
+    @keyframes twinkle {
+      0%, 100% { opacity: .15; transform: scale(.8); }
+      50%      { opacity: .9;  transform: scale(1.2); }
+    }
+    .animate-twinkle { animation: twinkle 4s ease-in-out infinite; }
+
+    .perspective-card { perspective: 1000px; }
+    .transform-3d { transform-style: preserve-3d; }
+    .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+  </style>
+</head>
+<body>
+  <div id="boot">
+    <div style="text-align:center">
+      <div class="ring"></div>
+      <p>BOOTING SOLAR VOYAGER</p>
+    </div>
+  </div>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+
+  <div class="hidden from-rose-500 to-red-600 from-orange-500 to-amber-600 from-sky-500 to-blue-600 from-emerald-500 to-green-600 from-teal-500 to-cyan-600 from-yellow-400 to-amber-500 from-lime-400 to-green-500 from-fuchsia-500 to-purple-600 from-pink-500 to-rose-500 from-fuchsia-600 to-pink-700 from-cyan-500 to-blue-600 from-amber-500 to-orange-600 from-emerald-500 to-teal-600 from-amber-400 to-fuchsia-500 from-cyan-400 to-fuchsia-500 from-violet-500 to-purple-600 from-orange-400 to-red-500 from-yellow-500 to-orange-500 from-slate-400 to-slate-600 from-stone-400 to-stone-600 from-amber-500 to-fuchsia-500 from-amber-300 via-orange-300 to-fuchsia-300 from-amber-400 via-orange-400 to-fuchsia-400 from-amber-500/15 to-orange-500/15 from-amber-400 to-orange-500 text-rose-200 text-orange-200 text-sky-200 text-emerald-200 text-teal-200 text-yellow-200 text-lime-200 text-fuchsia-200 text-pink-200 text-cyan-200 text-cyan-300 text-amber-300 text-emerald-300 text-fuchsia-300 text-emerald-400 text-orange-300 text-pink-300 text-rose-300 text-violet-300 text-amber-200 text-slate-300 text-purple-300 bg-emerald-500/15 border-emerald-400/40 bg-amber-400/15 border-amber-400/40 bg-amber-400/10 border-amber-400/30 bg-red-400/15 border-red-400/40"></div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef, useMemo, useLayoutEffect } = React;
+
+    function L({ name, className = '', size = 24, strokeWidth = 2, ...rest }) {
+      const ref = useRef(null);
+      useLayoutEffect(() => {
+        if (!ref.current || !window.lucide) return;
+        const lib = window.lucide;
+        const node = lib.icons && lib.icons[name];
+        if (!node) return;
+        const svg = lib.createElement(node);
+        svg.setAttribute('width', size);
+        svg.setAttribute('height', size);
+        svg.setAttribute('stroke-width', strokeWidth);
+        if (className) svg.setAttribute('class', className);
+        ref.current.replaceChildren(svg);
+      }, [name, size, strokeWidth, className]);
+      return <span ref={ref} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle' }} />;
+    }
+
+    const Sparkles = (p) => <L name="Sparkles" {...p} />;
+    const Trophy = (p) => <L name="Trophy" {...p} />;
+    const BookOpen = (p) => <L name="BookOpen" {...p} />;
+    const Star = (p) => <L name="Star" {...p} />;
+    const X = (p) => <L name="X" {...p} />;
+    const Target = (p) => <L name="Target" {...p} />;
+    const RefreshCw = (p) => <L name="RefreshCw" {...p} />;
+    const ChevronRight = (p) => <L name="ChevronRight" {...p} />;
+    const ChevronLeft = (p) => <L name="ChevronLeft" {...p} />;
+    const Lock = (p) => <L name="Lock" {...p} />;
+    const Lightbulb = (p) => <L name="Lightbulb" {...p} />;
+    const Flame = (p) => <L name="Flame" {...p} />;
+    const Search = (p) => <L name="Search" {...p} />;
+    const Check = (p) => <L name="Check" {...p} />;
+    const Crown = (p) => <L name="Crown" {...p} />;
+    const Award = (p) => <L name="Award" {...p} />;
+    const Zap = (p) => <L name="Zap" {...p} />;
+    const Activity = (p) => <L name="Activity" {...p} />;
+    const Globe = (p) => <L name="Globe" {...p} />;
+    const Rocket = (p) => <L name="Rocket" {...p} />;
+    const Sun = (p) => <L name="Sun" {...p} />;
+    const Moon = (p) => <L name="Moon" {...p} />;
+    const Orbit = (p) => <L name="Orbit" {...p} />;
+    const Sparkle = (p) => <L name="Sparkle" {...p} />;
+
+    const xpToLevel = xp => Math.floor(xp / 100) + 1;
+    const xpInLevel = xp => xp % 100;
+    const rand = arr => arr[Math.floor(Math.random() * arr.length)];
+    const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+
+const BODIES = [
+  { id:'sun', name:'The Sun', cat:'star', emoji:'☀️', color:'#fbbf24', orbit:0, size:24,
+    desc:'A massive ball of glowing plasma. The center of our solar system and the source of nearly all life on Earth.',
+    fact:'The Sun is so big you could fit 1.3 million Earths inside it. It loses 4 million tons of mass every second by turning hydrogen into pure light.',
+    stats:{ 'Distance from Earth':'150 million km', 'Surface temp':'5,500°C', 'Age':'4.6 billion years', 'Gravity (g-force)':'27.9' },
+    weight: 27.9, ord: 0 },
+  { id:'mercury', name:'Mercury', cat:'terrestrial', emoji:'☄️', color:'#94a3b8', orbit:1, size:5,
+    desc:'The smallest planet, closest to the Sun. Daytime temps melt lead. Nights freeze your eyeballs.',
+    fact:'A day on Mercury (one rotation) takes 59 Earth days, but a year (one orbit) is only 88 Earth days. So a day is longer than 2/3 of its year!',
+    stats:{ 'Distance from Sun':'58M km', 'Day length':'59 Earth days', 'Year length':'88 Earth days', 'Moons':'0', 'Gravity (g)':'0.38' },
+    weight: 0.38, ord: 1 },
+  { id:'venus', name:'Venus', cat:'terrestrial', emoji:'🟡', color:'#fcd34d', orbit:2, size:7,
+    desc:'Earth\'s evil twin. Same size as Earth, but a runaway greenhouse turned it into a 470°C acid-rain hellscape.',
+    fact:'Venus spins backward compared to other planets. The Sun rises in the west and sets in the east. Also, a day there is longer than its year.',
+    stats:{ 'Distance from Sun':'108M km', 'Surface temp':'470°C', 'Day length':'243 Earth days', 'Moons':'0', 'Gravity (g)':'0.91' },
+    weight: 0.91, ord: 2 },
+  { id:'earth', name:'Earth', cat:'terrestrial', emoji:'🌍', color:'#3b82f6', orbit:3, size:7,
+    desc:'Home. The only known planet with life, liquid water oceans, and a stable climate. Our spaceship through the universe.',
+    fact:'Earth is racing through space at 107,000 km/h around the Sun. We are also spinning at 1,670 km/h at the equator. You never feel it because everything moves with you.',
+    stats:{ 'Distance from Sun':'150M km', 'Day length':'24 hours', 'Year length':'365.25 days', 'Moons':'1', 'Gravity (g)':'1.00' },
+    weight: 1.00, ord: 3 },
+  { id:'moon', name:'The Moon', cat:'moon', emoji:'🌙', color:'#cbd5e1', orbit:3.4, size:3,
+    desc:'Earth\'s only natural satellite. Caused by a Mars-sized object slamming into early Earth 4.5 billion years ago.',
+    fact:'The Moon is moving 3.8 cm farther from Earth every year. Eventually it will be too far to cause total solar eclipses, and humans will see the last one in about 600 million years.',
+    stats:{ 'Distance from Earth':'384,400 km', 'Day length':'29.5 Earth days', 'Gravity (g)':'0.17', 'Visited by humans':'12 astronauts' },
+    weight: 0.17, ord: 3.4 },
+  { id:'mars', name:'Mars', cat:'terrestrial', emoji:'🔴', color:'#dc2626', orbit:4, size:6,
+    desc:'The Red Planet. Cold, dusty, with the largest volcano and deepest canyon in the solar system. Probably our next home.',
+    fact:'Mars has the tallest volcano in the solar system, Olympus Mons. It is three times the height of Mount Everest, and you could fit France inside its base.',
+    stats:{ 'Distance from Sun':'228M km', 'Surface temp':'-60°C', 'Day length':'24h 37min', 'Year length':'687 Earth days', 'Moons':'2', 'Gravity (g)':'0.38' },
+    weight: 0.38, ord: 4 },
+  { id:'asteroidbelt', name:'Asteroid Belt', cat:'belt', emoji:'🪨', color:'#a3a3a3', orbit:5, size:4,
+    desc:'A zone of millions of rocky leftovers between Mars and Jupiter that never managed to form a planet.',
+    fact:'Despite the dramatic movie scenes, the asteroid belt is almost empty. The average distance between asteroids is about a million km. You could fly through it your whole life and never see one.',
+    stats:{ 'Location':'Between Mars and Jupiter', 'Largest asteroid':'Ceres (940 km)', 'Total mass':'About 4% of the Moon', 'Asteroids tracked':'Over 1 million' },
+    weight: 0, ord: 5 },
+  { id:'jupiter', name:'Jupiter', cat:'gas-giant', emoji:'🪐', color:'#f97316', orbit:6, size:14,
+    desc:'The biggest planet. A gas giant so massive it has its own mini solar system of 95 moons.',
+    fact:'Jupiter\'s Great Red Spot is a storm twice the size of Earth that has been raging for at least 350 years. It is finally starting to shrink.',
+    stats:{ 'Distance from Sun':'778M km', 'Day length':'9h 56min', 'Year length':'12 Earth years', 'Moons':'95', 'Gravity (g)':'2.53' },
+    weight: 2.53, ord: 5 },
+  { id:'europa', name:'Europa', cat:'moon', emoji:'❄️', color:'#bae6fd', orbit:6.4, size:3,
+    desc:'A frozen moon of Jupiter with an ocean of liquid water under its icy crust. The most likely place we might find alien life.',
+    fact:'Europa\'s ocean might hold twice as much water as ALL of Earth\'s oceans combined. NASA is sending a probe there to look for life.',
+    stats:{ 'Orbits':'Jupiter', 'Surface temp':'-160°C', 'Ice thickness':'10-30 km', 'Ocean depth':'Maybe 100 km' },
+    weight: 0.13, ord: 6.4 },
+  { id:'io', name:'Io', cat:'moon', emoji:'🌋', color:'#fde047', orbit:6.6, size:3,
+    desc:'The most volcanic body in the solar system. Constantly squeezed and stretched by Jupiter\'s gravity.',
+    fact:'Io has over 400 active volcanoes that throw lava 500 km into space. Its surface changes shape every few years from all the eruptions.',
+    stats:{ 'Orbits':'Jupiter', 'Volcanoes':'400+ active', 'Surface':'Sulfur and lava', 'Gravity (g)':'0.18' },
+    weight: 0.18, ord: 6.6 },
+  { id:'saturn', name:'Saturn', cat:'gas-giant', emoji:'🪐', color:'#fef3c7', orbit:7, size:13,
+    desc:'The most beautiful planet, with rings made of billions of chunks of ice and rock.',
+    fact:'Saturn is the only planet less dense than water. If you could find a bathtub big enough, Saturn would actually float in it.',
+    stats:{ 'Distance from Sun':'1.4B km', 'Day length':'10h 42min', 'Year length':'29 Earth years', 'Moons':'146', 'Gravity (g)':'1.07', 'Ring width':'282,000 km' },
+    weight: 1.07, ord: 6 },
+  { id:'titan', name:'Titan', cat:'moon', emoji:'🟠', color:'#fb923c', orbit:7.4, size:3.5,
+    desc:'Saturn\'s biggest moon. The only moon with a thick atmosphere and lakes (of liquid methane, not water).',
+    fact:'Titan rains liquid methane from methane clouds into methane lakes. With a winter coat and bird-like wings strapped to your arms, you could actually fly there because of the thick air and low gravity.',
+    stats:{ 'Orbits':'Saturn', 'Surface temp':'-180°C', 'Atmosphere':'Thicker than Earth\'s', 'Gravity (g)':'0.14' },
+    weight: 0.14, ord: 7.4 },
+  { id:'uranus', name:'Uranus', cat:'ice-giant', emoji:'🟦', color:'#67e8f9', orbit:8, size:10,
+    desc:'A pale blue-green ice giant that rotates on its side. Probably knocked over by an ancient collision.',
+    fact:'Uranus is tipped over 98 degrees, so its poles point at the Sun. Each pole gets 42 years of daylight followed by 42 years of darkness.',
+    stats:{ 'Distance from Sun':'2.9B km', 'Day length':'17h', 'Year length':'84 Earth years', 'Moons':'27', 'Gravity (g)':'0.89' },
+    weight: 0.89, ord: 7 },
+  { id:'neptune', name:'Neptune', cat:'ice-giant', emoji:'💙', color:'#3b82f6', orbit:9, size:10,
+    desc:'The windiest planet. Deep blue from methane in its atmosphere. The farthest planet from the Sun.',
+    fact:'Neptune has the fastest winds in the solar system, blowing at 2,100 km/h. That is faster than the speed of sound here on Earth.',
+    stats:{ 'Distance from Sun':'4.5B km', 'Day length':'16h', 'Year length':'165 Earth years', 'Moons':'14', 'Gravity (g)':'1.14', 'Wind speed':'2,100 km/h' },
+    weight: 1.14, ord: 8 },
+  { id:'triton', name:'Triton', cat:'moon', emoji:'🌑', color:'#a78bfa', orbit:9.4, size:3,
+    desc:'Neptune\'s biggest moon. It orbits backward, suggesting it was a captured dwarf planet.',
+    fact:'Triton has nitrogen geysers that shoot 8 km into the sky. It is also one of the coldest places known anywhere, at -235°C.',
+    stats:{ 'Orbits':'Neptune', 'Direction':'Backward (retrograde)', 'Surface temp':'-235°C', 'Gravity (g)':'0.08' },
+    weight: 0.08, ord: 9.4 },
+  { id:'pluto', name:'Pluto', cat:'dwarf', emoji:'🟫', color:'#a78bfa', orbit:10, size:3,
+    desc:'A tiny, icy dwarf planet at the edge of the solar system. Reclassified from a planet in 2006.',
+    fact:'Pluto has a giant heart-shaped ice plain on its surface, named Tombaugh Regio after its discoverer. It is mostly frozen nitrogen ice.',
+    stats:{ 'Distance from Sun':'5.9B km', 'Year length':'248 Earth years', 'Moons':'5', 'Gravity (g)':'0.06', 'Diameter':'2,376 km (smaller than the Moon)' },
+    weight: 0.06, ord: 9 },
+  { id:'eris', name:'Eris', cat:'dwarf', emoji:'⚪', color:'#e5e7eb', orbit:11, size:3,
+    desc:'A dwarf planet beyond Pluto. Its discovery in 2005 caused Pluto to lose its planet status.',
+    fact:'Eris is so far away that sunlight takes 9 hours to reach it. From there, the Sun would just look like an extra-bright star.',
+    stats:{ 'Distance from Sun':'10.1B km', 'Year length':'558 Earth years', 'Moons':'1 (Dysnomia)', 'Diameter':'2,326 km' },
+    weight: 0.08, ord: 10 },
+  { id:'halley', name:"Halley's Comet", cat:'comet', emoji:'☄️', color:'#22d3ee', orbit:0, size:3,
+    desc:'A famous comet that swings by Earth every 76 years. Last seen in 1986. Returns in 2061.',
+    fact:'Halley\'s Comet has been spotted by humans for over 2,000 years. The Romans noted it. The Babylonians noted it. Mark Twain was born when it appeared and died when it returned.',
+    stats:{ 'Orbital period':'76 years', 'Last seen':'1986', 'Next return':'2061', 'Tail length':'Up to 100M km' },
+    weight: 0, ord: 0 },
+  { id:'voyager', name:'Voyager 1', cat:'mission', emoji:'🛰️', color:'#10b981', orbit:0, size:3,
+    desc:'A spacecraft launched in 1977. Now the farthest human-made object, in interstellar space beyond the solar system.',
+    fact:'Voyager 1 carries a Golden Record with sounds and music from Earth, in case aliens find it. It will keep traveling for billions of years.',
+    stats:{ 'Launched':'1977', 'Current distance':'24 billion km', 'Status':'Still sending data', 'Power':'Plutonium battery' },
+    weight: 0, ord: 0 },
+  { id:'iss', name:'ISS', cat:'mission', emoji:'🛸', color:'#a3e635', orbit:0, size:3,
+    desc:'The International Space Station. A football-field-sized lab orbiting Earth with astronauts living onboard.',
+    fact:'The ISS travels at 28,000 km/h and orbits Earth every 90 minutes. Astronauts on board see 16 sunrises and sunsets every day.',
+    stats:{ 'Altitude':'408 km above Earth', 'Speed':'28,000 km/h', 'Crew size':'7 astronauts', 'In orbit since':'1998' },
+    weight: 0, ord: 0 },
+];
+
+// Just the 8 planets in correct order, used for ordering puzzle
+const PLANET_ORDER = ['mercury','venus','earth','mars','jupiter','saturn','uranus','neptune'];
+
+const TYPES = {
+  star:        { label:'Star',          tile:'from-yellow-400 to-amber-500',    text:'text-amber-300',  dot:'bg-amber-400' },
+  terrestrial: { label:'Rocky Planet',  tile:'from-orange-500 to-red-500',      text:'text-orange-300', dot:'bg-orange-400' },
+  'gas-giant': { label:'Gas Giant',     tile:'from-amber-500 to-orange-600',    text:'text-amber-300',  dot:'bg-amber-400' },
+  'ice-giant': { label:'Ice Giant',     tile:'from-cyan-500 to-blue-600',       text:'text-cyan-300',   dot:'bg-cyan-400' },
+  moon:        { label:'Moon',          tile:'from-slate-400 to-slate-600',     text:'text-slate-300',  dot:'bg-slate-400' },
+  dwarf:       { label:'Dwarf Planet',  tile:'from-violet-500 to-purple-600',   text:'text-violet-300', dot:'bg-violet-400' },
+  belt:        { label:'Asteroid Belt', tile:'from-stone-400 to-stone-600',     text:'text-slate-300',  dot:'bg-stone-400' },
+  comet:       { label:'Comet',         tile:'from-cyan-400 to-fuchsia-500',    text:'text-cyan-300',   dot:'bg-cyan-400' },
+  mission:     { label:'Mission',       tile:'from-emerald-500 to-teal-600',    text:'text-emerald-300',dot:'bg-emerald-400' },
+};
+
+const ACHIEVEMENTS = [
+  { id:'first',   name:'First Light',         desc:'Discover your first body',          icon:Sparkles, check:s=>s.discovered.size>=1 },
+  { id:'planets', name:'Planet Hunter',       desc:'Find all 8 planets',                icon:Globe,    check:s=>['mercury','venus','earth','mars','jupiter','saturn','uranus','neptune'].every(id=>s.discovered.has(id)) },
+  { id:'moons',   name:'Moon Walker',         desc:'Find every moon',                   icon:Moon,     check:s=>BODIES.filter(b=>b.cat==='moon').every(b=>s.discovered.has(b.id)) },
+  { id:'all',     name:'Cosmic Explorer',     desc:'Find every body in the system',     icon:Crown,    check:s=>s.discovered.size>=BODIES.length },
+  { id:'gas',     name:'Giant Slayer',        desc:'Find all gas and ice giants',       icon:Orbit,    check:s=>BODIES.filter(b=>b.cat==='gas-giant'||b.cat==='ice-giant').every(b=>s.discovered.has(b.id)) },
+  { id:'win1',    name:'Mission Successful',  desc:'Win your first game',               icon:Trophy,   check:s=>s.gamesWon>=1 },
+  { id:'win5',    name:'Astronaut',           desc:'Win 5 games',                       icon:Rocket,   check:s=>s.gamesWon>=5 },
+  { id:'streak',  name:'Hot Streak',          desc:'5 right in a row in any game',      icon:Flame,    check:s=>s.bestStreak>=5 },
+  { id:'order',   name:'System Architect',    desc:'Order all 8 planets perfectly',     icon:Target,   check:s=>s.orderedPerfectly>=1 },
+  { id:'gravity', name:'Gravity Master',      desc:'Use the Gravity Calculator 3 times',icon:Zap,      check:s=>s.gravityChecks>=3 },
+  { id:'l5',      name:'Pilot',               desc:'Reach Level 5',                     icon:Star,     check:s=>Math.floor(s.xp/100)+1>=5 },
+  { id:'l10',     name:'Mission Commander',   desc:'Reach Level 10',                    icon:Crown,    check:s=>Math.floor(s.xp/100)+1>=10 },
+];
+
+function Stat({ icon: Icon, label, value, color }) {
+  return (
+    <div className="stat-chip flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-slate-700/60">
+      <Icon className={`w-4 h-4 ${color}`} />
+      <div className="leading-tight">
+        <div className="stat-label text-[10px] uppercase tracking-widest text-slate-500">{label}</div>
+        <div className={`stat-value font-display text-sm ${color}`}>{value}</div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ icon: Icon, title, children, color = 'text-amber-300' }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1.5">
+        <Icon className={`w-4 h-4 ${color}`} />
+        <h3 className={`font-display text-xs tracking-[0.2em] uppercase ${color}`}>{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function GameHeader({ onExit, title, round, total, score, streak, extra }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <button onClick={onExit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-amber-400/50 text-sm">
+        <ChevronLeft className="w-4 h-4" /> Exit
+      </button>
+      <h2 className="font-display text-xl sm:text-2xl tracking-wider text-white">{title}</h2>
+      <div className="ml-auto flex items-center gap-4 flex-wrap">
+        {round && <div className="text-sm text-slate-400">Round <span className="font-display text-amber-300">{round}/{total}</span></div>}
+        {score !== undefined && <div className="text-sm text-slate-400">Score <span className="font-display text-amber-300">{score}</span></div>}
+        {streak > 0 && <div className="flex items-center gap-1 text-sm text-orange-300"><Flame className="w-4 h-4" /> {streak}</div>}
+        {extra}
+      </div>
+    </div>
+  );
+}
+
+function GameResult({ title, score, total, message, onPlayAgain, onExit }) {
+  return (
+    <div className="max-w-md mx-auto mt-10 p-8 rounded-2xl bg-slate-900/80 border border-amber-400/40 text-center shadow-[0_0_40px_rgba(251,191,36,0.25)] animate-slideup">
+      <Trophy className="w-14 h-14 mx-auto text-amber-300" />
+      <h2 className="mt-3 font-display text-2xl tracking-wider text-white">{title}</h2>
+      <div className="mt-2 text-5xl font-display text-amber-300">{score}</div>
+      <div className="text-sm tracking-widest text-slate-400 mt-1 uppercase">{total}</div>
+      <p className="mt-4 text-slate-300">{message}</p>
+      <div className="mt-6 flex gap-3 justify-center">
+        <button onClick={onPlayAgain} className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-display tracking-wider text-sm flex items-center gap-2">
+          <RefreshCw className="w-4 h-4" /> Play Again
+        </button>
+        <button onClick={onExit} className="px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-500 text-sm">
+          Choose Another Game
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AchievementToast({ toast }) {
+  const Icon = toast.icon;
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-slideup">
+      <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-gradient-to-r from-amber-500/95 to-orange-500/95 text-slate-900 shadow-[0_0_40px_rgba(251,191,36,0.5)] border border-amber-200/40">
+        <div className="w-10 h-10 grid place-items-center rounded-xl bg-slate-900/85 text-amber-300">
+          <Icon className="w-5 h-5" strokeWidth={2.4} />
+        </div>
+        <div>
+          <div className="text-[10px] tracking-[0.25em] font-display uppercase">Trophy Unlocked</div>
+          <div className="font-display text-lg tracking-wider leading-tight">{toast.name}</div>
+          <div className="text-xs leading-tight opacity-80">{toast.desc}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Card({ icon: Icon, title, children, accent = 'text-amber-300', accentBg = 'bg-amber-400/15 border-amber-400/40' }) {
+  return (
+    <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-8 h-8 grid place-items-center rounded-lg border ${accentBg}`}>
+          <Icon className={`w-4 h-4 ${accent}`} />
+        </div>
+        <h3 className="font-display text-lg tracking-wide text-white">{title}</h3>
+      </div>
+      <p>{children}</p>
+    </div>
+  );
+}
+
+function App() {
+  const [tab, setTab] = useState('map');
+  const [selected, setSelected] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [xp, setXp] = useState(0);
+  const [discovered, setDiscovered] = useState(new Set());
+  const [gamesWon, setGamesWon] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [orderedPerfectly, setOrderedPerfectly] = useState(0);
+  const [gravityChecks, setGravityChecks] = useState(0);
+  const [unlockedAchievements, setUnlockedAchievements] = useState(new Set());
+  const [toast, setToast] = useState(null);
+  const [activeGame, setActiveGame] = useState(null);
+  const [xpFloater, setXpFloater] = useState(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  const STORAGE_KEY = 'solar-voyager-v1';
+  const state = { xp, discovered, gamesWon, bestStreak, orderedPerfectly, gravityChecks };
+  const level = xpToLevel(xp);
+  const lvlPct = xpInLevel(xp);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (typeof d.xp === 'number') setXp(d.xp);
+        if (Array.isArray(d.discovered)) setDiscovered(new Set(d.discovered));
+        if (typeof d.gamesWon === 'number') setGamesWon(d.gamesWon);
+        if (typeof d.bestStreak === 'number') setBestStreak(d.bestStreak);
+        if (typeof d.orderedPerfectly === 'number') setOrderedPerfectly(d.orderedPerfectly);
+        if (typeof d.gravityChecks === 'number') setGravityChecks(d.gravityChecks);
+        if (Array.isArray(d.unlocked)) setUnlockedAchievements(new Set(d.unlocked));
+      }
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        xp, discovered:[...discovered], gamesWon, bestStreak, orderedPerfectly, gravityChecks,
+        unlocked:[...unlockedAchievements]
+      }));
+    } catch {}
+  }, [hydrated, xp, discovered, gamesWon, bestStreak, orderedPerfectly, gravityChecks, unlockedAchievements]);
+
+  useEffect(() => {
+    ACHIEVEMENTS.forEach(a => {
+      if (!unlockedAchievements.has(a.id) && a.check(state)) {
+        setUnlockedAchievements(prev => new Set(prev).add(a.id));
+        setToast({ name:a.name, desc:a.desc, icon:a.icon });
+        setTimeout(() => setToast(null), 4200);
+      }
+    });
+  }, [xp, discovered, gamesWon, bestStreak, orderedPerfectly, gravityChecks]);
+
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setInstallPrompt(null));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const installApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
+
+  const grantXp = (amount, reason='') => {
+    setXp(x => x + amount);
+    setXpFloater({ amount, reason, id: Date.now() });
+    setTimeout(() => setXpFloater(null), 1400);
+  };
+
+  const openBody = el => {
+    setSelected(el);
+    if (!discovered.has(el.id)) {
+      setDiscovered(prev => new Set(prev).add(el.id));
+      grantXp(5, `Discovered ${el.name}!`);
+    }
+  };
+
+  const resetProgress = () => {
+    if (!confirm('Reset all progress? This cannot be undone.')) return;
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    setXp(0); setDiscovered(new Set()); setGamesWon(0); setBestStreak(0);
+    setOrderedPerfectly(0); setGravityChecks(0); setUnlockedAchievements(new Set());
+  };
+
+  const filteredBodies = useMemo(() => {
+    return BODIES.filter(b => {
+      if (filter !== 'all' && b.cat !== filter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return b.name.toLowerCase().includes(q) || b.cat.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [filter, search]);
+
+  return (
+    <div className="min-h-screen w-full text-slate-100 relative overflow-x-hidden font-body">
+      <BackgroundFx />
+      <header className="relative z-10 border-b border-amber-400/20 bg-slate-950/60 backdrop-blur-xl">
+        <div className="header-pad max-w-[1400px] mx-auto px-3 sm:px-6 py-4 flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12 grid place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-[0_0_30px_rgba(251,191,36,0.55)]">
+              <Sun className="w-5 h-5 sm:w-7 sm:h-7 text-slate-900" strokeWidth={2.5} />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
+            <div>
+              <h1 className="font-display text-lg sm:text-2xl tracking-[0.18em] leading-none bg-gradient-to-r from-amber-300 via-orange-300 to-fuchsia-300 bg-clip-text text-transparent">
+                SOLAR VOYAGER
+              </h1>
+              <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-slate-400 mt-1">COSMIC EXPLORER</p>
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-2 sm:gap-5 flex-wrap">
+            {installPrompt && (
+              <button onClick={installApp}
+                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-fuchsia-500 text-slate-900 font-display text-xs tracking-widest flex items-center gap-1.5 shadow-[0_0_20px_rgba(251,191,36,0.4)] hover:scale-105 transition-transform">
+                <Sparkles className="w-3.5 h-3.5" /> INSTALL
+              </button>
+            )}
+            <Stat icon={Sparkles} label="XP"       value={xp}             color="text-amber-300" />
+            <Stat icon={Star}     label="Level"    value={level}          color="text-orange-300" />
+            <Stat icon={Orbit}    label="Found"    value={`${discovered.size}/${BODIES.length}`} color="text-emerald-300" />
+            <Stat icon={Trophy}   label="Trophies" value={`${unlockedAchievements.size}/${ACHIEVEMENTS.length}`} color="text-fuchsia-300" />
+          </div>
+        </div>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-3">
+          <div className="h-1.5 rounded-full bg-slate-800/80 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-amber-400 via-orange-400 to-fuchsia-400 transition-all duration-700"
+                 style={{ width: `${lvlPct}%` }} />
+          </div>
+        </div>
+        <nav className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-3 flex gap-2 flex-wrap">
+          {[
+            { id:'map',     label:'Solar Map',         icon:Orbit },
+            { id:'list',    label:'List View',         icon:BookOpen },
+            { id:'gravity', label:'Gravity Calc',      icon:Zap },
+            { id:'games',   label:'Games',             icon:Target },
+            { id:'trophy',  label:'Achievements',      icon:Trophy },
+            { id:'about',   label:'How To Play',       icon:Lightbulb },
+          ].map(t => (
+            <button key={t.id} onClick={() => { setTab(t.id); setActiveGame(null); }}
+              className={`group px-4 py-2 rounded-lg flex items-center gap-2 text-sm tracking-wider uppercase transition-all border ${
+                tab === t.id
+                  ? 'bg-amber-400/15 border-amber-400/60 text-amber-200 shadow-[0_0_20px_rgba(251,191,36,0.3)]'
+                  : 'border-slate-700/60 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+              }`}>
+              <t.icon className="w-4 h-4" />
+              <span className="font-display text-xs">{t.label}</span>
+            </button>
+          ))}
+        </nav>
+      </header>
+      <main className="relative z-10 max-w-[1400px] mx-auto px-2 sm:px-6 py-6">
+        {tab === 'map' && <SolarMap bodies={BODIES} discovered={discovered} onSelect={openBody} />}
+        {tab === 'list' && <ListView bodies={filteredBodies} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} discovered={discovered} onSelect={openBody} />}
+        {tab === 'gravity' && <GravityCalculator onCheck={() => setGravityChecks(g => g + 1)} />}
+        {tab === 'games' && !activeGame && <GamesHub onStart={setActiveGame} />}
+        {tab === 'games' && activeGame === 'identify' && <IdentifyGame onExit={() => setActiveGame(null)} grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} bestStreak={bestStreak} setBestStreak={setBestStreak} />}
+        {tab === 'games' && activeGame === 'detective' && <DetectiveGame onExit={() => setActiveGame(null)} grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} bestStreak={bestStreak} setBestStreak={setBestStreak} />}
+        {tab === 'games' && activeGame === 'order' && <OrderGame onExit={() => setActiveGame(null)} grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} onPerfect={() => setOrderedPerfectly(o=>o+1)} />}
+        {tab === 'games' && activeGame === 'memory' && <MemoryGame onExit={() => setActiveGame(null)} grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} />}
+        {tab === 'trophy' && <AchievementsView state={state} unlocked={unlockedAchievements} />}
+        {tab === 'about' && <AboutView resetProgress={resetProgress} />}
+      </main>
+      {selected && <BodyModal body={selected} onClose={() => setSelected(null)} />}
+      {toast && <AchievementToast toast={toast} />}
+      {xpFloater && (
+        <div key={xpFloater.id} className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] pointer-events-none">
+          <div className="px-4 py-2 rounded-full bg-amber-500/95 text-slate-900 font-display tracking-wider text-sm shadow-[0_0_30px_rgba(251,191,36,0.7)] animate-xpfloat">
+            +{xpFloater.amount} XP {xpFloater.reason && <span className="opacity-90 normal-case font-body ml-1">{xpFloater.reason}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SolarMap({ bodies, discovered, onSelect }) {
+  const W = 800, H = 600;
+  const cx = W/2, cy = H/2;
+  // Orbiting bodies sorted by orbit distance
+  const orbiting = bodies.filter(b => b.orbit > 0 && b.cat !== 'comet' && b.cat !== 'mission');
+  const others = bodies.filter(b => b.orbit === 0 || b.cat === 'comet' || b.cat === 'mission');
+  const sun = bodies.find(b => b.id === 'sun');
+
+  return (
+    <div className="grid lg:grid-cols-[1fr_300px] gap-6">
+      <div className="rounded-2xl bg-slate-950/40 border border-slate-700/40 p-2 sm:p-4 overflow-hidden">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full block" style={{ maxHeight: '70vh' }}>
+          <defs>
+            <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(253,224,71,0.95)" />
+              <stop offset="35%" stopColor="rgba(251,191,36,0.6)" />
+              <stop offset="100%" stopColor="rgba(251,191,36,0)" />
+            </radialGradient>
+            <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(251,191,36,0.08)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width={W} height={H} fill="#020617" />
+          {/* Stars background */}
+          {Array.from({length: 80}).map((_, i) => {
+            const sx = (i * 137) % W;
+            const sy = (i * 89) % H;
+            const sr = ((i * 7) % 3) * 0.4 + 0.3;
+            return <circle key={`star-${i}`} cx={sx} cy={sy} r={sr} fill="white" opacity="0.5" />;
+          })}
+          <circle cx={cx} cy={cy} r={W/2} fill="url(#bgGlow)" />
+
+          {/* Orbit paths */}
+          {orbiting.filter(b => b.cat !== 'moon').map((b) => {
+            const r = 40 + b.orbit * 32;
+            return <ellipse key={`o-${b.id}`} cx={cx} cy={cy} rx={r} ry={r*0.3} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />;
+          })}
+
+          {/* Sun */}
+          <g onClick={() => onSelect(sun)} style={{cursor: 'pointer'}}>
+            <circle cx={cx} cy={cy} r={48} fill="url(#sunGlow)" />
+            <circle cx={cx} cy={cy} r={sun.size} fill="#fbbf24">
+              <animate attributeName="r" values={`${sun.size};${sun.size+1.5};${sun.size}`} dur="3s" repeatCount="indefinite" />
+            </circle>
+            {discovered.has(sun.id) && <circle cx={cx + sun.size*0.65} cy={cy - sun.size*0.65} r="3" fill="#34d399" stroke="#020617" strokeWidth="0.8" />}
+          </g>
+
+          {/* Orbiting bodies positioned at specific angles around the orbit */}
+          {orbiting.map((b, i) => {
+            const r = 40 + b.orbit * 32;
+            // Spread bodies around the orbit so they don't overlap
+            const angle = (i * 0.8 + 0.3) * Math.PI;
+            const px = cx + r * Math.cos(angle);
+            const py = cy + r * 0.3 * Math.sin(angle);
+            const isMoon = b.cat === 'moon';
+            return (
+              <g key={b.id} onClick={() => onSelect(b)} style={{cursor: 'pointer'}}>
+                <circle cx={px} cy={py} r={b.size + 4} fill={b.color} opacity="0.18" />
+                <circle cx={px} cy={py} r={b.size} fill={b.color} stroke={discovered.has(b.id) ? '#34d399' : 'rgba(255,255,255,0.5)'} strokeWidth="0.8">
+                  <animate attributeName="r" values={`${b.size};${b.size+0.5};${b.size}`} dur="2.5s" repeatCount="indefinite" />
+                </circle>
+                <text x={px} y={py + b.size + 9} textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize={isMoon ? "8" : "10"} fontFamily="Orbitron, sans-serif" style={{letterSpacing: '0.1em'}}>{b.name.toUpperCase()}</text>
+                {discovered.has(b.id) && <circle cx={px + b.size*0.65} cy={py - b.size*0.65} r="2" fill="#34d399" stroke="#020617" strokeWidth="0.4" />}
+              </g>
+            );
+          })}
+        </svg>
+        <div className="text-center mt-2 text-xs tracking-widest text-slate-500 font-display">TAP ANY BODY TO EXPLORE</div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+          <div className="font-display text-xs tracking-widest text-slate-400 mb-2">BEYOND THE PLANETS</div>
+          <div className="space-y-2">
+            {others.map(b => {
+              const t = TYPES[b.cat];
+              return (
+                <button key={b.id} onClick={() => onSelect(b)}
+                  className={`w-full p-2.5 rounded-lg text-left flex items-center gap-2 border transition bg-gradient-to-br ${t.tile} hover:scale-[1.02]`}>
+                  <span className="text-2xl">{b.emoji}</span>
+                  <div className="flex-1">
+                    <div className="font-display text-sm text-white tracking-wide">{b.name}</div>
+                    <div className="text-[9px] text-white/70 tracking-widest uppercase">{t.label}</div>
+                  </div>
+                  {discovered.has(b.id) && <Check className="w-4 h-4 text-emerald-300" strokeWidth={3} />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+          <div className="font-display text-xs tracking-widest text-slate-400 mb-2">PROGRESS</div>
+          <div className="text-3xl font-display text-amber-300">{discovered.size}<span className="text-slate-500">/{BODIES.length}</span></div>
+          <div className="text-xs text-slate-400 mt-1">Bodies discovered</div>
+          <div className="mt-3 space-y-1.5">
+            {Object.entries(TYPES).map(([k, v]) => {
+              const total = BODIES.filter(b => b.cat === k).length;
+              if (total === 0) return null;
+              const found = BODIES.filter(b => b.cat === k && discovered.has(b.id)).length;
+              return (
+                <div key={k} className="flex items-center justify-between text-xs">
+                  <span className={v.text}><span className={`inline-block w-2 h-2 rounded-sm mr-1.5 align-middle ${v.dot}`} />{v.label}</span>
+                  <span className="text-slate-500 font-mono">{found}/{total}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ListView({ bodies, filter, setFilter, search, setSearch, discovered, onSelect }) {
+  return (
+    <div>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input type="text" placeholder="Search by name..."
+                 value={search} onChange={e => setSearch(e.target.value)}
+                 className="w-full pl-10 pr-3 py-2 rounded-lg bg-slate-900/70 border border-slate-700/60 focus:border-amber-400/60 focus:outline-none text-sm" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => setFilter('all')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-display tracking-wider uppercase transition border ${
+              filter === 'all' ? 'bg-amber-400/15 border-amber-400/60 text-amber-200' : 'border-slate-700/60 text-slate-400'
+            }`}>All</button>
+          {Object.entries(TYPES).map(([k, v]) => (
+            <button key={k} onClick={() => setFilter(k)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-display tracking-wider uppercase transition border ${
+                filter === k ? 'bg-amber-400/15 border-amber-400/60 text-amber-200' : 'border-slate-700/60 text-slate-400'
+              }`}>{v.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {bodies.map(b => {
+          const t = TYPES[b.cat];
+          const isDiscovered = discovered.has(b.id);
+          return (
+            <button key={b.id} onClick={() => onSelect(b)}
+              className={`relative p-4 rounded-xl text-left border bg-gradient-to-br ${t.tile} hover:scale-[1.02] transition-all`}>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">{b.emoji}</div>
+                <div className="flex-1">
+                  <div className="font-display text-lg text-white tracking-wide">{b.name}</div>
+                  <div className="text-[10px] text-white/70 tracking-widest uppercase">{t.label}</div>
+                </div>
+                {isDiscovered && <Check className="w-4 h-4 text-emerald-300" strokeWidth={3} />}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function BodyModal({ body, onClose }) {
+  const t = TYPES[body.cat];
+  useEffect(() => {
+    const handle = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4 animate-fadein" onClick={onClose}>
+      <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md" />
+      <div onClick={e => e.stopPropagation()}
+           className="relative w-full max-w-3xl bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-[0_0_60px_rgba(251,191,36,0.25)] overflow-hidden animate-slideup">
+        <div className={`relative bg-gradient-to-br ${t.tile} p-6 sm:p-8 overflow-hidden`}>
+          <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 p-2.5 rounded-full bg-black/40 hover:bg-black/60 text-white">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="pointer-events-none absolute -bottom-12 -right-8 text-[180px] sm:text-[200px] leading-none select-none opacity-20">{body.emoji}</div>
+          <div className="relative">
+            <div className="font-mono text-xs text-white/80 tracking-widest uppercase">{t.label}</div>
+            <div className="font-display text-4xl sm:text-5xl text-white drop-shadow-lg leading-tight mt-1">{body.name}</div>
+          </div>
+        </div>
+        <div className="p-6 sm:p-8 space-y-5 max-h-[60vh] overflow-y-auto custom-scroll">
+          <Section icon={BookOpen} title="What it is" color="text-amber-300">
+            <p className="text-slate-200 leading-relaxed">{body.desc}</p>
+          </Section>
+          <Section icon={Lightbulb} title="Mind-Blowing Fact" color="text-amber-300">
+            <p className="font-fact text-amber-200 text-lg leading-relaxed">{body.fact}</p>
+          </Section>
+          <Section icon={Activity} title="Stats" color="text-amber-300">
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {Object.entries(body.stats).map(([k, v]) => (
+                <div key={k} className="p-2 rounded-lg bg-slate-950/60 border border-slate-700/40">
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500">{k}</div>
+                  <div className="font-display text-amber-200 text-sm mt-0.5">{v}</div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GravityCalculator({ onCheck }) {
+  const [weight, setWeight] = useState(80);
+  const [unit, setUnit] = useState('lbs');
+  const [hasChecked, setHasChecked] = useState(false);
+
+  const handleCheck = () => {
+    if (!hasChecked) { onCheck(); setHasChecked(true); }
+  };
+
+  // Order bodies for display: rocky planets, gas/ice giants, moons, dwarf, sun
+  const groups = [
+    { label: 'Earth & The Moon',  ids: ['earth','moon'] },
+    { label: 'Rocky Planets',     ids: ['mercury','venus','mars'] },
+    { label: 'Gas & Ice Giants',  ids: ['jupiter','saturn','uranus','neptune'] },
+    { label: 'Famous Moons',      ids: ['europa','io','titan','triton'] },
+    { label: 'Dwarf Planets',     ids: ['pluto','eris'] },
+    { label: 'The Sun',           ids: ['sun'] },
+  ];
+  const lookup = Object.fromEntries(BODIES.map(b => [b.id, b]));
+  const earth = lookup.earth;
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <div className="mb-6">
+        <h2 className="font-display text-3xl tracking-wider text-white">Gravity Calculator</h2>
+        <p className="text-slate-400 text-sm mt-1">Type your Earth weight and see how much you would weigh on every world.</p>
+      </div>
+
+      <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/15 to-orange-500/15 border border-amber-400/40 mb-6 shadow-[0_0_30px_rgba(251,191,36,0.15)]">
+        <label className="block">
+          <span className="font-display text-xs tracking-widest text-amber-300">YOUR WEIGHT ON EARTH</span>
+          <div className="mt-2 flex gap-3 items-center">
+            <input type="number" min="1" max="9999" value={weight}
+              onChange={e => { setWeight(Number(e.target.value) || 0); handleCheck(); }}
+              onFocus={handleCheck}
+              className="flex-1 px-4 py-3 rounded-lg bg-slate-950/70 border border-amber-400/40 focus:border-amber-300 focus:outline-none text-2xl font-display text-amber-200" />
+            <div className="flex rounded-lg overflow-hidden border border-amber-400/40">
+              <button onClick={() => setUnit('lbs')}
+                className={`px-3 py-3 font-display text-sm tracking-wider ${unit === 'lbs' ? 'bg-amber-400 text-slate-900' : 'bg-slate-900 text-amber-300'}`}>LBS</button>
+              <button onClick={() => setUnit('kg')}
+                className={`px-3 py-3 font-display text-sm tracking-wider ${unit === 'kg' ? 'bg-amber-400 text-slate-900' : 'bg-slate-900 text-amber-300'}`}>KG</button>
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <div className="space-y-5">
+        {groups.map(group => (
+          <div key={group.label}>
+            <div className="font-display text-xs tracking-widest text-slate-400 mb-2 uppercase">{group.label}</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {group.ids.map(id => {
+                const b = lookup[id];
+                if (!b) return null;
+                const w = (weight * b.weight).toFixed(1);
+                const t = TYPES[b.cat];
+                return (
+                  <div key={id} className={`p-4 rounded-xl border bg-gradient-to-br ${t.tile} relative overflow-hidden`}>
+                    <div className="absolute top-2 right-2 text-2xl opacity-50">{b.emoji}</div>
+                    <div className="font-display text-sm text-white/80 tracking-wider">{b.name}</div>
+                    <div className="font-display text-2xl text-white mt-1">{w} <span className="text-sm text-white/70">{unit}</span></div>
+                    <div className="text-[10px] text-white/70 mt-1">×{b.weight} Earth gravity</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+        <div className="flex items-center gap-2 mb-1">
+          <Lightbulb className="w-4 h-4 text-amber-300" />
+          <span className="font-display text-xs tracking-widest text-amber-300">DID YOU KNOW</span>
+        </div>
+        <p className="text-slate-300 text-sm leading-relaxed">
+          On Pluto, a 100 lb person weighs only 6 lbs. On Jupiter, that same person weighs 253 lbs. Astronauts feel weightless not because there is no gravity in space, but because they are constantly falling around Earth. The Sun&apos;s gravity is so strong that you would weigh 28 times more there, if you could survive the heat.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function IdentifyGame({ onExit, grantXp, onWin, bestStreak, setBestStreak }) {
+  const ROUNDS = 6;
+  const [round, setRound] = useState(0);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [puzzle, setPuzzle] = useState(null);
+  const [picked, setPicked] = useState(null);
+
+  useEffect(() => { newRound(); }, []);
+  function newRound() {
+    const factPool = BODIES.filter(b => b.fact);
+    const answer = rand(factPool);
+    const wrong = shuffle(factPool.filter(b => b.id !== answer.id)).slice(0, 3);
+    setPuzzle({ answer, choices: shuffle([answer, ...wrong]) });
+    setPicked(null);
+  }
+  function pick(b) {
+    if (picked) return;
+    setPicked(b);
+    const right = b.id === puzzle.answer.id;
+    if (right) {
+      setScore(s => s + 1);
+      const ns = streak + 1; setStreak(ns);
+      if (ns > bestStreak) setBestStreak(ns);
+      grantXp(15, 'Correct!');
+    } else { setStreak(0); }
+    setTimeout(() => {
+      if (round + 1 >= ROUNDS) {
+        if (score + (right ? 1 : 0) >= 4) onWin();
+        setRound(ROUNDS);
+      } else {
+        setRound(r => r + 1); newRound();
+      }
+    }, 1500);
+  }
+  if (!puzzle) return null;
+  if (round >= ROUNDS) {
+    return <GameResult title="Mission Complete" score={score} total={`out of ${ROUNDS}`}
+      message={score >= 4 ? 'Excellent astronomy!' : 'Good run. Keep exploring.'}
+      onPlayAgain={() => { setRound(0); setScore(0); setStreak(0); newRound(); }} onExit={onExit} />;
+  }
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Cosmic Identifier" round={round+1} total={ROUNDS} score={score} streak={streak} />
+      <div className="mt-6 max-w-3xl mx-auto">
+        <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60">
+          <div className="text-xs tracking-widest text-amber-300 mb-3 font-display">WHICH BODY HAS THIS PROPERTY?</div>
+          <p className="text-slate-100 text-lg leading-relaxed">{puzzle.answer.fact}</p>
+        </div>
+        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {puzzle.choices.map(c => {
+            const t = TYPES[c.cat];
+            const isAnswer = picked && c.id === puzzle.answer.id;
+            const isWrong = picked && picked.id === c.id && c.id !== puzzle.answer.id;
+            return (
+              <button key={c.id} onClick={() => pick(c)} disabled={!!picked}
+                className={`p-4 rounded-xl text-center transition-all border ${
+                  picked ? (
+                    isAnswer ? 'bg-emerald-500/30 border-emerald-400 scale-105' :
+                    isWrong ? 'bg-red-500/30 border-red-400' :
+                    'opacity-40 border-slate-700'
+                  ) : `bg-gradient-to-br ${t.tile} border-transparent hover:scale-105`
+                }`}>
+                <div className="text-3xl">{c.emoji}</div>
+                <div className="font-display text-base text-white mt-1">{c.name}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetectiveGame({ onExit, grantXp, onWin, bestStreak, setBestStreak }) {
+  const ROUNDS = 6;
+  const [round, setRound] = useState(0);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [puzzle, setPuzzle] = useState(null);
+  const [picked, setPicked] = useState(null);
+
+  useEffect(() => { newRound(); }, []);
+  function newRound() {
+    const answer = rand(BODIES);
+    const wrong = shuffle(BODIES.filter(b => b.id !== answer.id)).slice(0, 3);
+    setPuzzle({ answer, choices: shuffle([answer, ...wrong]) });
+    setPicked(null);
+  }
+  function pick(b) {
+    if (picked) return;
+    setPicked(b);
+    const right = b.id === puzzle.answer.id;
+    if (right) {
+      setScore(s => s + 1);
+      const ns = streak + 1; setStreak(ns);
+      if (ns > bestStreak) setBestStreak(ns);
+      grantXp(15, 'Solved!');
+    } else { setStreak(0); }
+    setTimeout(() => {
+      if (round + 1 >= ROUNDS) {
+        if (score + (right ? 1 : 0) >= 4) onWin();
+        setRound(ROUNDS);
+      } else { setRound(r => r + 1); newRound(); }
+    }, 1500);
+  }
+  if (!puzzle) return null;
+  if (round >= ROUNDS) {
+    return <GameResult title="Detective Closed The Case" score={score} total={`out of ${ROUNDS}`}
+      message={score >= 4 ? 'Sharp deduction.' : 'Good run. Try again.'}
+      onPlayAgain={() => { setRound(0); setScore(0); setStreak(0); newRound(); }} onExit={onExit} />;
+  }
+  const ans = puzzle.answer;
+  // Three clues from the body's data
+  const clue1 = `Type: ${TYPES[ans.cat].label}`;
+  const statKeys = Object.keys(ans.stats);
+  const clue2 = statKeys.length > 0 ? `${statKeys[0]}: ${ans.stats[statKeys[0]]}` : '';
+  const clue3 = statKeys.length > 1 ? `${statKeys[1]}: ${ans.stats[statKeys[1]]}` : (ans.fact || '');
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Cosmic Detective" round={round+1} total={ROUNDS} score={score} streak={streak} />
+      <div className="mt-6 max-w-3xl mx-auto">
+        <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60 space-y-2">
+          <Clue n={1} text={clue1} />
+          <Clue n={2} text={clue2} />
+          <Clue n={3} text={clue3} />
+        </div>
+        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {puzzle.choices.map(c => {
+            const t = TYPES[c.cat];
+            const isAnswer = picked && c.id === puzzle.answer.id;
+            const isWrong = picked && picked.id === c.id && c.id !== puzzle.answer.id;
+            return (
+              <button key={c.id} onClick={() => pick(c)} disabled={!!picked}
+                className={`p-4 rounded-xl text-center transition-all border ${
+                  picked ? (
+                    isAnswer ? 'bg-emerald-500/30 border-emerald-400 scale-105' :
+                    isWrong ? 'bg-red-500/30 border-red-400' :
+                    'opacity-40 border-slate-700'
+                  ) : `bg-gradient-to-br ${t.tile} border-transparent hover:scale-105`
+                }`}>
+                <div className="text-3xl">{c.emoji}</div>
+                <div className="font-display text-base text-white mt-1">{c.name}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Clue({ n, text }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/60 border border-slate-700/40 animate-slidein">
+      <div className="w-7 h-7 rounded-full bg-amber-400/15 border border-amber-400/40 grid place-items-center font-display text-amber-300 text-xs flex-shrink-0">{n}</div>
+      <p className="text-slate-200 text-sm leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
+function OrderGame({ onExit, grantXp, onWin, onPerfect }) {
+  const planets = PLANET_ORDER.map(id => BODIES.find(b => b.id === id));
+  const [order, setOrder] = useState(() => shuffle(planets));
+  const [submitted, setSubmitted] = useState(false);
+  const [correct, setCorrect] = useState(0);
+
+  function move(i, dir) {
+    if (submitted) return;
+    const ni = i + dir;
+    if (ni < 0 || ni >= order.length) return;
+    const next = [...order];
+    [next[i], next[ni]] = [next[ni], next[i]];
+    setOrder(next);
+  }
+
+  function submit() {
+    let c = 0;
+    order.forEach((p, i) => { if (p.id === PLANET_ORDER[i]) c++; });
+    setCorrect(c);
+    setSubmitted(true);
+    grantXp(c * 10, `${c}/8 in correct position`);
+    if (c === 8) { onWin(); onPerfect(); grantXp(50, 'PERFECT bonus!'); }
+    else if (c >= 6) onWin();
+  }
+
+  function reset() {
+    setOrder(shuffle(planets));
+    setSubmitted(false); setCorrect(0);
+  }
+
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Order The Planets" extra={
+        <div className="text-xs text-slate-400 font-display tracking-wider">CLOSEST → FARTHEST</div>
+      } />
+      <div className="mt-6 max-w-2xl mx-auto">
+        <p className="text-slate-300 text-sm mb-4 text-center">Arrange the 8 planets from closest to the Sun (left) to farthest (right). Tap the arrows to swap positions.</p>
+        <div className="space-y-2">
+          {order.map((p, i) => {
+            const t = TYPES[p.cat];
+            const isCorrect = submitted && p.id === PLANET_ORDER[i];
+            const isWrong = submitted && p.id !== PLANET_ORDER[i];
+            return (
+              <div key={p.id}
+                className={`flex items-center gap-3 p-3 rounded-xl border transition-all bg-gradient-to-br ${t.tile} ${
+                  isCorrect ? 'ring-2 ring-emerald-400 scale-[1.02]' :
+                  isWrong ? 'ring-2 ring-red-400 opacity-70' : ''
+                }`}>
+                <div className="font-display text-lg text-white/80 w-6">{i+1}</div>
+                <div className="text-3xl">{p.emoji}</div>
+                <div className="flex-1">
+                  <div className="font-display text-lg text-white">{p.name}</div>
+                  {submitted && p.id !== PLANET_ORDER[i] && (
+                    <div className="text-xs text-white/80">Correct position: {PLANET_ORDER.indexOf(p.id) + 1}</div>
+                  )}
+                </div>
+                {!submitted && (
+                  <div className="flex gap-1">
+                    <button onClick={() => move(i, -1)} disabled={i === 0}
+                      className="w-9 h-9 rounded-lg bg-black/30 hover:bg-black/50 disabled:opacity-30 grid place-items-center text-white">↑</button>
+                    <button onClick={() => move(i, 1)} disabled={i === order.length - 1}
+                      className="w-9 h-9 rounded-lg bg-black/30 hover:bg-black/50 disabled:opacity-30 grid place-items-center text-white">↓</button>
+                  </div>
+                )}
+                {isCorrect && <Check className="w-5 h-5 text-emerald-300" strokeWidth={3} />}
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-5 flex gap-3 justify-center">
+          {!submitted ? (
+            <button onClick={submit} className="px-6 py-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-display tracking-wider">
+              SUBMIT ORDER
+            </button>
+          ) : (
+            <>
+              <div className={`px-6 py-3 rounded-lg font-display text-lg tracking-wider ${
+                correct === 8 ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400'
+                : correct >= 6 ? 'bg-amber-500/30 text-amber-200 border border-amber-400'
+                : 'bg-slate-700 text-slate-300'
+              }`}>
+                {correct}/8 correct
+              </div>
+              <button onClick={reset} className="px-6 py-3 rounded-lg border border-slate-700 hover:border-amber-400/60 font-display text-sm tracking-wider">
+                <RefreshCw className="w-4 h-4 inline mr-2" />Try Again
+              </button>
+            </>
+          )}
+        </div>
+        <div className="mt-4 text-center text-xs text-slate-500">Hint: My Very Educated Mother Just Served Us Noodles</div>
+      </div>
+    </div>
+  );
+}
+
+function MemoryGame({ onExit, grantXp, onWin }) {
+  const [cards, setCards] = useState([]);
+  const [flipped, setFlipped] = useState([]);
+  const [matched, setMatched] = useState(new Set());
+  const [moves, setMoves] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => { reset(); }, []);
+  function reset() {
+    const picks = shuffle(BODIES).slice(0, 8);
+    const sym = picks.map(b => ({ id:`s-${b.id}`, kind:'emoji', b }));
+    const nm = picks.map(b => ({ id:`n-${b.id}`, kind:'name', b }));
+    setCards(shuffle([...sym, ...nm]));
+    setFlipped([]); setMatched(new Set()); setMoves(0); setDone(false);
+  }
+  function flip(card) {
+    if (flipped.length === 2 || flipped.find(c => c.id === card.id) || matched.has(card.b.id)) return;
+    const nf = [...flipped, card];
+    setFlipped(nf);
+    if (nf.length === 2) {
+      setMoves(m => m + 1);
+      const [a, b] = nf;
+      if (a.b.id === b.b.id && a.kind !== b.kind) {
+        const next = new Set(matched).add(a.b.id);
+        setTimeout(() => {
+          setMatched(next); setFlipped([]); grantXp(8, 'Match!');
+          if (next.size === 8) {
+            setDone(true); onWin();
+            const bonus = Math.max(0, 15 - moves) * 5;
+            if (bonus) grantXp(bonus, 'Efficiency bonus');
+          }
+        }, 600);
+      } else {
+        setTimeout(() => setFlipped([]), 900);
+      }
+    }
+  }
+  if (done) return <GameResult title="Memory Master!" score={moves} total="moves"
+    message={moves <= 12 ? 'Photographic memory!' : 'Solid work.'}
+    onPlayAgain={reset} onExit={onExit} />;
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Cosmic Memory"
+        extra={<div className="text-sm text-slate-300">Moves: <span className="font-display text-amber-300">{moves}</span></div>}
+        score={`${matched.size}/8`} />
+      <div className="mt-6 max-w-3xl mx-auto grid grid-cols-4 gap-2 sm:gap-3">
+        {cards.map(card => {
+          const isFlipped = flipped.find(c => c.id === card.id) || matched.has(card.b.id);
+          const isMatched = matched.has(card.b.id);
+          const t = TYPES[card.b.cat];
+          return (
+            <button key={card.id} onClick={() => flip(card)}
+              className={`aspect-square rounded-xl transition-all duration-500 perspective-card ${isMatched ? 'opacity-60' : ''}`}>
+              <div className={`relative w-full h-full transition-transform duration-500 transform-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+                <div className="absolute inset-0 backface-hidden rounded-xl bg-slate-900/80 border border-slate-700/60 grid place-items-center hover:border-amber-400/50">
+                  <Sparkles className="w-7 h-7 text-slate-600" />
+                </div>
+                <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-xl bg-gradient-to-br ${t.tile} grid place-items-center p-2`}>
+                  {card.kind === 'emoji' ? <div className="text-4xl">{card.b.emoji}</div>
+                    : <div className="text-center"><div className="font-display text-xs sm:text-sm text-white">{card.b.name}</div></div>}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function GamesHub({ onStart }) {
+  const games = [
+    { id:'identify', name:'Cosmic Identifier', desc:'Read a fact, pick the world it belongs to.',         icon:Sparkle,   color:'from-amber-500 to-orange-600', diff:'CLASSIC' },
+    { id:'detective',name:'Cosmic Detective',  desc:'Three clues, four suspects. Find the right body.',  icon:Lightbulb, color:'from-violet-500 to-purple-600', diff:'TRICKY' },
+    { id:'order',    name:'Order The Planets', desc:'Arrange the 8 planets in correct distance order.',  icon:Target,    color:'from-cyan-500 to-blue-600', diff:'PUZZLE' },
+    { id:'memory',   name:'Cosmic Memory',     desc:'Match emoji and name cards. Fewer moves = better.', icon:Zap,       color:'from-emerald-500 to-teal-600', diff:'MEMORY' },
+  ];
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="font-display text-3xl tracking-wider text-white">Choose Your Mission</h2>
+        <p className="text-slate-400 text-sm mt-1">Each game earns XP, levels up your astronaut, and unlocks trophies.</p>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        {games.map(g => (
+          <button key={g.id} onClick={() => onStart(g.id)}
+            className="group relative text-left p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60 hover:border-amber-400/50 transition-all overflow-hidden hover:shadow-[0_0_30px_rgba(251,191,36,0.18)]">
+            <div className={`absolute -top-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-br ${g.color} opacity-20 blur-2xl group-hover:opacity-40`} />
+            <div className={`relative w-12 h-12 grid place-items-center rounded-xl bg-gradient-to-br ${g.color} mb-4 shadow-lg`}>
+              <g.icon className="w-6 h-6 text-white" strokeWidth={2.2} />
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-display text-xl text-white tracking-wide">{g.name}</h3>
+              <span className="text-[10px] tracking-widest text-amber-300 px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/30">{g.diff}</span>
+            </div>
+            <p className="text-slate-400 text-sm leading-relaxed">{g.desc}</p>
+            <div className="mt-4 flex items-center gap-1.5 text-amber-300 text-sm font-display tracking-wider">
+              LAUNCH <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AchievementsView({ state, unlocked }) {
+  return (
+    <div>
+      <h2 className="font-display text-3xl tracking-wider text-white mb-1">Trophy Cabinet</h2>
+      <p className="text-slate-400 text-sm mb-6">Unlocked {unlocked.size} of {ACHIEVEMENTS.length} trophies</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {ACHIEVEMENTS.map(a => {
+          const earned = unlocked.has(a.id);
+          const Icon = a.icon;
+          return (
+            <div key={a.id} className={`relative p-5 rounded-2xl border transition-all ${
+              earned
+                ? 'bg-gradient-to-br from-amber-500/15 to-orange-500/15 border-amber-400/50 shadow-[0_0_25px_rgba(251,191,36,0.2)]'
+                : 'bg-slate-900/60 border-slate-700/50'
+            }`}>
+              <div className={`w-11 h-11 grid place-items-center rounded-xl mb-3 ${
+                earned ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-slate-900' : 'bg-slate-800 text-slate-600'
+              }`}>
+                {earned ? <Icon className="w-6 h-6" strokeWidth={2.4} /> : <Lock className="w-5 h-5" />}
+              </div>
+              <h3 className={`font-display text-lg tracking-wide ${earned ? 'text-amber-200' : 'text-slate-400'}`}>{a.name}</h3>
+              <p className="text-sm text-slate-400 mt-1">{a.desc}</p>
+              {earned && <div className="absolute top-3 right-3 text-[10px] tracking-widest text-amber-300 font-display">UNLOCKED</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AboutView({ resetProgress }) {
+  return (
+    <div className="max-w-3xl mx-auto">
+      <h2 className="font-display text-3xl tracking-wider text-white mb-4">How To Play</h2>
+      <div className="space-y-4 text-slate-300 leading-relaxed">
+        <Card icon={Orbit} title="Tap any glowing world" accent="text-amber-300" accentBg="bg-amber-400/15 border-amber-400/40">
+          On the Solar Map, every planet, moon, and dwarf planet glows. Tap to learn what it is, see its stats, and read a fact that will blow your mind. First-time discoveries earn +5 XP.
+        </Card>
+        <Card icon={Zap} title="Try the Gravity Calculator" accent="text-amber-300" accentBg="bg-amber-400/15 border-amber-400/40">
+          Type in your weight and instantly see how much you would weigh on every world. You weigh almost nothing on Pluto. You weigh more than double on Jupiter.
+        </Card>
+        <Card icon={Target} title="Play 4 cosmic games" accent="text-amber-300" accentBg="bg-amber-400/15 border-amber-400/40">
+          Cosmic Identifier shows you a fact and you pick the world. Cosmic Detective gives you 3 clues. Order The Planets is a drag-the-arrows puzzle. Cosmic Memory tests your card-flipping skills.
+        </Card>
+        <Card icon={Trophy} title="Collect 12 trophies" accent="text-amber-300" accentBg="bg-amber-400/15 border-amber-400/40">
+          Find all 8 planets, find every moon, perfectly order the solar system, win 5 games, reach Level 10, and more.
+        </Card>
+        <Card icon={Sparkles} title="Install on your phone" accent="text-amber-300" accentBg="bg-amber-400/15 border-amber-400/40">
+          On Android, tap the INSTALL button in the header. On iPhone, use Safari Share menu, then Add to Home Screen. The lab installs as a real app and works offline after the first visit.
+        </Card>
+        <div className="p-5 rounded-2xl bg-red-500/10 border border-red-400/30">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 grid place-items-center rounded-lg bg-red-400/15 border border-red-400/40">
+              <RefreshCw className="w-4 h-4 text-red-300" />
+            </div>
+            <h3 className="font-display text-lg tracking-wide text-white">Reset Progress</h3>
+          </div>
+          <p className="mb-3">Wipe all XP, discoveries, and trophies and start over.</p>
+          <button onClick={resetProgress} className="px-4 py-2 rounded-lg bg-red-500/80 hover:bg-red-500 text-white font-display text-xs tracking-widest">RESET EVERYTHING</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BackgroundFx() {
+  return (
+    <>
+      <div className="fixed inset-0 -z-10 bg-[#020617]" />
+      <div className="fixed inset-0 -z-10 opacity-50" style={{
+        background: 'radial-gradient(900px 600px at 20% -10%, rgba(251,191,36,0.18), transparent 60%), radial-gradient(900px 700px at 110% 10%, rgba(217,70,239,0.16), transparent 60%), radial-gradient(800px 600px at 50% 130%, rgba(59,130,246,0.10), transparent 60%)'
+      }} />
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        {Array.from({ length: 40 }).map((_, i) => (
+          <span key={i} className="absolute block rounded-full bg-amber-200/40 animate-twinkle"
+                style={{
+                  width: `${Math.random() * 3 + 1}px`,
+                  height: `${Math.random() * 3 + 1}px`,
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  animationDuration: `${3 + Math.random() * 4}s`
+                }} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+    requestAnimationFrame(() => {
+      const boot = document.getElementById('boot');
+      if (boot) { boot.style.opacity = '0'; setTimeout(() => boot.remove(), 450); }
+    });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

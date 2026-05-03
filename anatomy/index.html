@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anatomy Lab · Body Explorer</title>
+  <meta name="description" content="Interactive body explorer for curious minds. Discover 24 organs and body parts, diagnose patients, play 4 games, and unlock trophies." />
+
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a0816" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Anatomy Lab" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+
+  <style>
+    html, body { background: #1a0816; min-height: 100vh; }
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #f1f5f9; }
+    .font-display { font-family: 'Orbitron', system-ui, sans-serif; letter-spacing: 0.02em; }
+    .font-body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .font-fact { font-family: 'Caveat', cursive; }
+    .font-mono { font-family: ui-monospace, monospace; }
+
+    #boot {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      z-index: 999; background: #1a0816; transition: opacity 0.4s;
+    }
+    #boot .ring {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 3px solid rgba(244,63,94,0.2);
+      border-top-color: #f43f5e;
+      animation: spin 0.9s linear infinite;
+    }
+    #boot p {
+      margin-top: 18px; font-family: 'Orbitron', sans-serif;
+      letter-spacing: 0.3em; font-size: 11px; color: #fda4af;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 640px) {
+      .stat-chip { padding: 4px 8px !important; }
+      .stat-chip .stat-label { display: none; }
+      .stat-chip .stat-value { font-size: 13px !important; }
+      .header-pad { padding-top: 10px !important; padding-bottom: 6px !important; }
+    }
+
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15,23,42,0.4); border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(244,63,94,0.4); border-radius: 4px; }
+
+    @keyframes fadein { from { opacity: 0 } to { opacity: 1 } }
+    .animate-fadein { animation: fadein .25s ease-out }
+    @keyframes slideup {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slideup { animation: slideup .35s cubic-bezier(0.2, 0.7, 0.3, 1); }
+    @keyframes slidein {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .animate-slidein { animation: slidein .3s ease-out; }
+    @keyframes xpfloat {
+      0%   { opacity: 0; transform: translate(-50%, 10px) scale(0.85); }
+      20%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      80%  { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -28px) scale(0.95); }
+    }
+    .animate-xpfloat { animation: xpfloat 1.4s ease-out forwards; }
+
+    .perspective-card { perspective: 1000px; }
+    .transform-3d { transform-style: preserve-3d; }
+    .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+  </style>
+</head>
+<body>
+  <div id="boot">
+    <div style="text-align:center">
+      <div class="ring"></div>
+      <p>INITIALIZING ANATOMY LAB</p>
+    </div>
+  </div>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+
+  <div class="hidden from-rose-500 to-red-600 from-orange-500 to-amber-600 from-sky-500 to-blue-600 from-emerald-500 to-green-600 from-teal-500 to-cyan-600 from-yellow-400 to-amber-500 from-lime-400 to-green-500 from-fuchsia-500 to-purple-600 from-pink-500 to-rose-500 from-fuchsia-600 to-pink-700 from-cyan-500 to-blue-600 from-amber-500 to-orange-600 from-emerald-500 to-teal-600 from-amber-400 to-fuchsia-500 from-cyan-400 to-fuchsia-500 from-rose-400 to-rose-600 from-violet-500 to-purple-600 from-indigo-500 to-violet-600 from-orange-400 to-red-500 from-yellow-500 to-orange-500 from-slate-500 to-slate-700 from-lime-500 to-green-600 from-amber-500 to-rose-500 text-rose-200 text-orange-200 text-sky-200 text-emerald-200 text-teal-200 text-yellow-200 text-lime-200 text-fuchsia-200 text-pink-200 text-cyan-200 text-cyan-300 text-amber-300 text-emerald-300 text-fuchsia-300 text-emerald-400 text-lime-400 text-yellow-400 text-orange-400 text-red-400 text-amber-400 text-pink-300 text-rose-300 text-violet-300 text-indigo-300 text-purple-300 text-slate-300 text-lime-300 text-orange-300 text-sky-300 text-teal-300 bg-emerald-500/15 border-emerald-400/40 bg-lime-500/15 border-lime-400/40 bg-yellow-500/15 border-yellow-400/40 bg-orange-500/15 border-orange-400/40 bg-red-500/15 border-red-400/40 bg-rose-500/15 border-rose-400/40 bg-pink-500/15 border-pink-400/40 bg-violet-500/15 border-violet-400/40 bg-cyan-500/15 border-cyan-400/40 bg-amber-500/15 border-amber-400/40 bg-rose-400/15 border-rose-400/40"></div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef, useMemo, useLayoutEffect } = React;
+
+    function L({ name, className = '', size = 24, strokeWidth = 2, ...rest }) {
+      const ref = useRef(null);
+      useLayoutEffect(() => {
+        if (!ref.current || !window.lucide) return;
+        const lib = window.lucide;
+        const node = lib.icons && lib.icons[name];
+        if (!node) return;
+        const svg = lib.createElement(node);
+        svg.setAttribute('width', size);
+        svg.setAttribute('height', size);
+        svg.setAttribute('stroke-width', strokeWidth);
+        if (className) svg.setAttribute('class', className);
+        ref.current.replaceChildren(svg);
+      }, [name, size, strokeWidth, className]);
+      return <span ref={ref} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle' }} />;
+    }
+
+    const Sparkles = (p) => <L name="Sparkles" {...p} />;
+    const Trophy = (p) => <L name="Trophy" {...p} />;
+    const BookOpen = (p) => <L name="BookOpen" {...p} />;
+    const Star = (p) => <L name="Star" {...p} />;
+    const X = (p) => <L name="X" {...p} />;
+    const AlertTriangle = (p) => <L name="AlertTriangle" {...p} />;
+    const Shield = (p) => <L name="Shield" {...p} />;
+    const Brain = (p) => <L name="Brain" {...p} />;
+    const Target = (p) => <L name="Target" {...p} />;
+    const Timer = (p) => <L name="Timer" {...p} />;
+    const RefreshCw = (p) => <L name="RefreshCw" {...p} />;
+    const ChevronRight = (p) => <L name="ChevronRight" {...p} />;
+    const ChevronLeft = (p) => <L name="ChevronLeft" {...p} />;
+    const Lock = (p) => <L name="Lock" {...p} />;
+    const Lightbulb = (p) => <L name="Lightbulb" {...p} />;
+    const Heart = (p) => <L name="Heart" {...p} />;
+    const Flame = (p) => <L name="Flame" {...p} />;
+    const Search = (p) => <L name="Search" {...p} />;
+    const Check = (p) => <L name="Check" {...p} />;
+    const Crown = (p) => <L name="Crown" {...p} />;
+    const Award = (p) => <L name="Award" {...p} />;
+    const Zap = (p) => <L name="Zap" {...p} />;
+    const Activity = (p) => <L name="Activity" {...p} />;
+    const Stethoscope = (p) => <L name="Stethoscope" {...p} />;
+    const Bone = (p) => <L name="Bone" {...p} />;
+    const Eye = (p) => <L name="Eye" {...p} />;
+    const Sparkle = (p) => <L name="Sparkle" {...p} />;
+
+    const xpToLevel = xp => Math.floor(xp / 100) + 1;
+    const xpInLevel = xp => xp % 100;
+    const rand = arr => arr[Math.floor(Math.random() * arr.length)];
+    const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+
+const BODY_PARTS = [
+  { id:'brain', name:'Brain', sys:'nervous', x:50, y:9, r:4, vital:true, emoji:'🧠',
+    desc:'The control center of your entire body. Every thought, movement, and feeling starts here.',
+    job:'Thinks, processes senses, controls movement, stores memories, regulates emotions.',
+    fact:'Your brain has 86 billion neurons, more than the stars you can see in the Milky Way on a clear night.',
+    sx:'Confusion, headaches, memory loss, trouble speaking, weak limbs.' },
+  { id:'eyes', name:'Eyes', sys:'sensory', x:43, y:13, r:2, emoji:'👀',
+    desc:'Your built-in cameras. They turn light into pictures your brain understands.',
+    job:'Detect light, see color and depth, recognize faces and motion.',
+    fact:'Your eyes can tell apart 10 million different colors and adjust to dim moonlight in seconds.',
+    sx:'Blurry vision, double vision, light sensitivity, eye pain.' },
+  { id:'ears', name:'Ears', sys:'sensory', x:57, y:13, r:2, emoji:'👂',
+    desc:'Hearing organs that also keep you balanced when you walk.',
+    job:'Catch sound waves and tell your brain which way is up.',
+    fact:'Tiny hairs in your inner ear bend with sound. Once they break, they never grow back, so loud music really does hurt.',
+    sx:'Ringing, hearing loss, dizziness, balance problems.' },
+  { id:'tongue', name:'Tongue', sys:'sensory', x:50, y:17, r:2, emoji:'👅',
+    desc:'A muscle that tastes food, helps you talk, and pushes food when you swallow.',
+    job:'Taste flavors, mix food with saliva, shape sounds for speech.',
+    fact:'Your tongue is the strongest muscle for its size in your whole body.',
+    sx:'Loss of taste, sores, swelling, trouble speaking.' },
+  { id:'trachea', name:'Trachea', sys:'respiratory', x:50, y:21, r:1.5, emoji:'🌫️',
+    desc:'The windpipe. A reinforced tube that carries air down to your lungs.',
+    job:'Move air between your nose, mouth, and lungs.',
+    fact:'Tiny hairs called cilia line the trachea and sweep dust and germs back up out of your lungs.',
+    sx:'Coughing, wheezing, sore throat, hoarseness.' },
+  { id:'thyroid', name:'Thyroid', sys:'endocrine', x:50, y:23, r:1.5, emoji:'🦋',
+    desc:'A butterfly-shaped gland in your neck that controls how fast your body uses energy.',
+    job:'Releases hormones that set your metabolism, growth, and body temperature.',
+    fact:'A thyroid that runs too fast or too slow can change your weight, mood, and energy without you knowing why.',
+    sx:'Tired all the time, weight changes, feeling cold or hot, mood changes.' },
+  { id:'lungs', name:'Lungs', sys:'respiratory', x:50, y:33, r:5, vital:true, emoji:'🫁',
+    desc:'Two spongy bags in your chest that pull oxygen out of the air.',
+    job:'Bring oxygen into your blood and push carbon dioxide back out.',
+    fact:'Spread flat, your lungs would cover the area of a tennis court because of all the tiny air sacs inside.',
+    sx:'Shortness of breath, coughing, chest pain, wheezing.' },
+  { id:'heart', name:'Heart', sys:'circulatory', x:46, y:35, r:3, vital:true, emoji:'❤️',
+    desc:'A muscle the size of your fist that pumps blood through your whole body.',
+    job:'Push oxygen-rich blood out, pull oxygen-poor blood back in.',
+    fact:'Your heart will beat about 2.5 billion times in your life and pump enough blood to fill 200 bathtubs every day.',
+    sx:'Chest pain, racing heartbeat, dizziness, shortness of breath.' },
+  { id:'ribs', name:'Ribs', sys:'skeletal', x:50, y:36, r:2, emoji:'🛡️',
+    desc:'A protective cage of 24 curved bones that shields your heart and lungs.',
+    job:'Protect chest organs and help your lungs expand when you breathe.',
+    fact:'Your top 7 ribs connect to your spine AND your sternum. The bottom 5 are looser, which is why you can twist.',
+    sx:'Sharp chest pain, especially when breathing deep or twisting.' },
+  { id:'diaphragm', name:'Diaphragm', sys:'respiratory', x:50, y:42, r:2.5, emoji:'🌬️',
+    desc:'The dome-shaped muscle under your lungs that powers every breath.',
+    job:'Pulls down to suck air in, pushes up to push air out.',
+    fact:'Hiccups happen when your diaphragm spasms. Holding your breath calms it down.',
+    sx:'Hiccups that won\'t stop, trouble breathing, sharp belly pain.' },
+  { id:'liver', name:'Liver', sys:'digestive', x:55, y:46, r:3.5, vital:true, emoji:'🍷',
+    desc:'A massive filter that cleans your blood and stores energy. Your body\'s chemistry lab.',
+    job:'Filter toxins, store sugar and vitamins, make proteins, break down medicines.',
+    fact:'The liver is the only organ in your body that can grow back. Lose 75% and it can rebuild itself in months.',
+    sx:'Yellow skin or eyes, belly pain, tiredness, dark pee.' },
+  { id:'stomach', name:'Stomach', sys:'digestive', x:44, y:47, r:2.5, emoji:'🥗',
+    desc:'A J-shaped acid bag that breaks food into mush before it moves on.',
+    job:'Mix food with acid and enzymes, kill germs, send pulp into the intestines.',
+    fact:'Stomach acid is strong enough to dissolve metal. Your stomach lining replaces itself every few days so it does not eat itself.',
+    sx:'Belly pain, nausea, heartburn, throwing up.' },
+  { id:'pancreas', name:'Pancreas', sys:'endocrine', x:50, y:50, r:1.8, emoji:'🧪',
+    desc:'A long gland behind your stomach that makes insulin and digestive juices.',
+    job:'Control blood sugar with insulin, help your gut break down food.',
+    fact:'When the pancreas stops making insulin, you get type 1 diabetes. Insulin shots replace what it would have made.',
+    sx:'Belly pain, weight loss, very thirsty, peeing a lot.' },
+  { id:'spleen', name:'Spleen', sys:'circulatory', x:60, y:48, r:1.8, emoji:'🛡️',
+    desc:'A small organ on your left side that filters blood and fights germs.',
+    job:'Recycle old red blood cells, store backup blood, help fight infection.',
+    fact:'You can survive without your spleen, but you have to be more careful about getting sick because your immune system loses backup.',
+    sx:'Pain in upper-left belly, feeling full quickly, easy bruising.' },
+  { id:'kidneys', name:'Kidneys', sys:'urinary', x:55, y:53, r:2.2, vital:true, emoji:'💧',
+    desc:'Two bean-shaped filters that clean your blood and make pee.',
+    job:'Filter waste from blood, balance water and salt, control blood pressure.',
+    fact:'Your kidneys filter ALL the blood in your body about 40 times a day, the equivalent of cleaning 50 gallons.',
+    sx:'Lower back pain, swollen ankles, foamy pee, very tired.' },
+  { id:'smallintestine', name:'Small Intestine', sys:'digestive', x:50, y:58, r:2.5, emoji:'🌀',
+    desc:'A long coiled tube where your body actually absorbs nutrients from food.',
+    job:'Pull vitamins, sugar, fat, and protein out of food and into your blood.',
+    fact:'Stretched out, your small intestine is 22 feet long, four times your height.',
+    sx:'Cramping, diarrhea, bloating, weight loss.' },
+  { id:'largeintestine', name:'Large Intestine', sys:'digestive', x:48, y:61, r:2.5, emoji:'🟫',
+    desc:'The wider tube after the small intestine, where water gets reabsorbed.',
+    job:'Pull water back from leftover food, store waste until you go to the bathroom.',
+    fact:'Trillions of helpful bacteria live in your large intestine and actually help you digest, like a built-in microbe team.',
+    sx:'Constipation, diarrhea, blood in stool, belly cramps.' },
+  { id:'appendix', name:'Appendix', sys:'digestive', x:54, y:63, r:1.2, emoji:'❓',
+    desc:'A small finger-shaped pouch that scientists are still figuring out.',
+    job:'Maybe stores helpful gut bacteria. We can live just fine without it.',
+    fact:'About 1 in 20 people get appendicitis. Surgeons remove the appendix in 30 minutes and you go home the next day.',
+    sx:'Sudden sharp pain in lower-right belly, fever, throwing up.' },
+  { id:'bladder', name:'Bladder', sys:'urinary', x:50, y:67, r:2, emoji:'🫗',
+    desc:'A stretchy balloon that stores pee until you find a bathroom.',
+    job:'Hold urine, then release it when you decide to go.',
+    fact:'A healthy bladder holds about 2 cups of pee. The "I really need to go" feeling kicks in around 1 cup.',
+    sx:'Burning when you pee, peeing a lot, blood in pee, belly pressure.' },
+  { id:'spine', name:'Spine', sys:'skeletal', x:50, y:50, r:2, emoji:'🐍',
+    desc:'A flexible stack of 33 bones that holds you upright and protects your nerves.',
+    job:'Support your body, let you bend and twist, protect the spinal cord.',
+    fact:'You actually shrink half an inch by bedtime each day because your spine compresses, then bounces back overnight.',
+    sx:'Back pain, numbness in legs, weak limbs, trouble walking.' },
+  { id:'pelvis', name:'Pelvis', sys:'skeletal', x:50, y:70, r:2.5, emoji:'🦴',
+    desc:'A bowl of bones at the base of your spine that connects your legs to your body.',
+    job:'Support your guts, anchor leg muscles, protect organs in your lower belly.',
+    fact:'Female pelvises are wider than male ones because they have to be big enough for a baby to fit through.',
+    sx:'Hip pain, trouble walking, lower-belly soreness.' },
+  { id:'femur', name:'Femur', sys:'skeletal', x:38, y:90, r:2.5, emoji:'🦴',
+    desc:'The thigh bone, the longest and strongest bone in your body.',
+    job:'Carry your whole body weight, anchor leg muscles, let you walk and run.',
+    fact:'Pound for pound, your femur is stronger than concrete and harder to break than a steel bar of the same weight.',
+    sx:'Sharp leg pain, trouble standing, swelling.' },
+  { id:'skin', name:'Skin', sys:'sensory', x:50, y:95, r:2.5, emoji:'🧴',
+    desc:'Your largest organ. A waterproof, self-repairing barrier that covers your whole body.',
+    job:'Block germs, sense touch and pain, regulate body temperature, make vitamin D in sunlight.',
+    fact:'Skin weighs about 8 pounds, the heaviest organ you have. You shed about 30,000 dead skin cells every minute.',
+    sx:'Rashes, itching, cuts that won\'t heal, color changes.' },
+  { id:'muscles', name:'Muscles', sys:'muscular', x:62, y:90, r:2.5, emoji:'💪',
+    desc:'Over 600 muscles let you move, smile, breathe, and pump blood.',
+    job:'Pull on bones to move, hold your posture, push food through your gut, beat your heart.',
+    fact:'Smiling uses fewer muscles than frowning, but the strongest muscle in your body is in your jaw, used for chewing.',
+    sx:'Cramps, weakness, soreness, twitching.' },
+];
+
+const SYSTEMS = {
+  nervous:     { label:'Nervous',     tile:'from-violet-500 to-purple-600', text:'text-violet-300', dot:'bg-violet-400' },
+  circulatory: { label:'Circulatory', tile:'from-rose-500 to-red-600',      text:'text-rose-300',   dot:'bg-rose-400' },
+  respiratory: { label:'Respiratory', tile:'from-sky-500 to-blue-600',      text:'text-sky-300',    dot:'bg-sky-400' },
+  digestive:   { label:'Digestive',   tile:'from-amber-500 to-orange-600',  text:'text-amber-300',  dot:'bg-amber-400' },
+  skeletal:    { label:'Skeletal',    tile:'from-slate-500 to-slate-700',   text:'text-slate-300',  dot:'bg-slate-400' },
+  sensory:     { label:'Sensory',     tile:'from-cyan-500 to-blue-600',     text:'text-cyan-300',   dot:'bg-cyan-400' },
+  urinary:     { label:'Urinary',     tile:'from-teal-500 to-cyan-600',     text:'text-teal-300',   dot:'bg-teal-400' },
+  endocrine:   { label:'Endocrine',   tile:'from-lime-500 to-green-600',    text:'text-lime-300',   dot:'bg-lime-400' },
+  muscular:    { label:'Muscular',    tile:'from-orange-500 to-red-500',    text:'text-orange-300', dot:'bg-orange-400' },
+};
+const SYSTEM_FILL = {
+  nervous:'rgba(167,139,250,0.85)', circulatory:'rgba(244,63,94,0.9)',
+  respiratory:'rgba(56,189,248,0.85)', digestive:'rgba(251,146,60,0.85)',
+  skeletal:'rgba(148,163,184,0.85)', sensory:'rgba(34,211,238,0.85)',
+  urinary:'rgba(45,212,191,0.85)', endocrine:'rgba(163,230,53,0.85)',
+  muscular:'rgba(251,113,133,0.85)',
+};
+
+const ACHIEVEMENTS = [
+  { id:'first',  name:'First Discovery', desc:'Find your first body part',     icon:Sparkles,   check:s=>s.discovered.size>=1 },
+  { id:'ten',    name:'Apprentice Doc',  desc:'Find 10 body parts',            icon:Stethoscope, check:s=>s.discovered.size>=10 },
+  { id:'all',    name:'Master Anatomist',desc:'Find every body part',          icon:Crown,      check:s=>s.discovered.size>=24 },
+  { id:'vital',  name:'Vital Signs',     desc:'Find every vital organ',        icon:Heart,      check:s=>BODY_PARTS.filter(b=>b.vital).every(b=>s.discovered.has(b.id)) },
+  { id:'sense',  name:'Five Senses',     desc:'Find every sensory organ',      icon:Eye,        check:s=>BODY_PARTS.filter(b=>b.sys==='sensory').every(b=>s.discovered.has(b.id)) },
+  { id:'bone',   name:'Boneyard',        desc:'Find every skeletal part',      icon:Bone,       check:s=>BODY_PARTS.filter(b=>b.sys==='skeletal').every(b=>s.discovered.has(b.id)) },
+  { id:'gut',    name:'Gut Feeling',     desc:'Find every digestive part',     icon:Activity,   check:s=>BODY_PARTS.filter(b=>b.sys==='digestive').every(b=>s.discovered.has(b.id)) },
+  { id:'win1',   name:'Game On',         desc:'Win your first game',           icon:Trophy,     check:s=>s.gamesWon>=1 },
+  { id:'win5',   name:'On a Roll',       desc:'Win 5 games',                   icon:Zap,        check:s=>s.gamesWon>=5 },
+  { id:'streak', name:'Hot Streak',      desc:'Get 5 right in a row in any game', icon:Flame,   check:s=>s.bestStreak>=5 },
+  { id:'l5',     name:'Resident',        desc:'Reach Level 5',                 icon:Award,      check:s=>Math.floor(s.xp/100)+1>=5 },
+  { id:'l10',    name:'Chief of Medicine',desc:'Reach Level 10',               icon:Crown,      check:s=>Math.floor(s.xp/100)+1>=10 },
+];
+
+function Stat({ icon: Icon, label, value, color }) {
+  return (
+    <div className="stat-chip flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-slate-700/60">
+      <Icon className={`w-4 h-4 ${color}`} />
+      <div className="leading-tight">
+        <div className="stat-label text-[10px] uppercase tracking-widest text-slate-500">{label}</div>
+        <div className={`stat-value font-display text-sm ${color}`}>{value}</div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ icon: Icon, title, children, color = 'text-rose-300' }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1.5">
+        <Icon className={`w-4 h-4 ${color}`} />
+        <h3 className={`font-display text-xs tracking-[0.2em] uppercase ${color}`}>{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function GameHeader({ onExit, title, round, total, score, streak, extra }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <button onClick={onExit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-rose-400/50 text-sm">
+        <ChevronLeft className="w-4 h-4" /> Exit
+      </button>
+      <h2 className="font-display text-xl sm:text-2xl tracking-wider text-white">{title}</h2>
+      <div className="ml-auto flex items-center gap-4 flex-wrap">
+        {round && <div className="text-sm text-slate-400">Round <span className="font-display text-rose-300">{round}/{total}</span></div>}
+        {score !== undefined && <div className="text-sm text-slate-400">Score <span className="font-display text-amber-300">{score}</span></div>}
+        {streak > 0 && <div className="flex items-center gap-1 text-sm text-orange-300"><Flame className="w-4 h-4" /> {streak}</div>}
+        {extra}
+      </div>
+    </div>
+  );
+}
+
+function GameResult({ title, score, total, message, onPlayAgain, onExit }) {
+  return (
+    <div className="max-w-md mx-auto mt-10 p-8 rounded-2xl bg-slate-900/80 border border-rose-400/40 text-center shadow-[0_0_40px_rgba(244,63,94,0.25)] animate-slideup">
+      <Trophy className="w-14 h-14 mx-auto text-amber-300" />
+      <h2 className="mt-3 font-display text-2xl tracking-wider text-white">{title}</h2>
+      <div className="mt-2 text-5xl font-display text-rose-300">{score}</div>
+      <div className="text-sm tracking-widest text-slate-400 mt-1 uppercase">{total}</div>
+      <p className="mt-4 text-slate-300">{message}</p>
+      <div className="mt-6 flex gap-3 justify-center">
+        <button onClick={onPlayAgain} className="px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-400 text-white font-display tracking-wider text-sm flex items-center gap-2">
+          <RefreshCw className="w-4 h-4" /> Play Again
+        </button>
+        <button onClick={onExit} className="px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-500 text-sm">
+          Choose Another Game
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AchievementToast({ toast }) {
+  const Icon = toast.icon;
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-slideup">
+      <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-gradient-to-r from-amber-500/95 to-rose-500/95 text-slate-900 shadow-[0_0_40px_rgba(251,191,36,0.5)] border border-amber-200/40">
+        <div className="w-10 h-10 grid place-items-center rounded-xl bg-slate-900/85 text-amber-300">
+          <Icon className="w-5 h-5" strokeWidth={2.4} />
+        </div>
+        <div>
+          <div className="text-[10px] tracking-[0.25em] font-display uppercase">Trophy Unlocked</div>
+          <div className="font-display text-lg tracking-wider leading-tight">{toast.name}</div>
+          <div className="text-xs leading-tight opacity-80">{toast.desc}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Card({ icon: Icon, title, children, accent = 'text-rose-300', accentBg = 'bg-rose-400/15 border-rose-400/40' }) {
+  return (
+    <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-8 h-8 grid place-items-center rounded-lg border ${accentBg}`}>
+          <Icon className={`w-4 h-4 ${accent}`} />
+        </div>
+        <h3 className="font-display text-lg tracking-wide text-white">{title}</h3>
+      </div>
+      <p>{children}</p>
+    </div>
+  );
+}
+
+function App() {
+  const [tab, setTab] = useState('body');
+  const [selected, setSelected] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [xp, setXp] = useState(0);
+  const [discovered, setDiscovered] = useState(new Set());
+  const [gamesWon, setGamesWon] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [unlockedAchievements, setUnlockedAchievements] = useState(new Set());
+  const [toast, setToast] = useState(null);
+  const [activeGame, setActiveGame] = useState(null);
+  const [xpFloater, setXpFloater] = useState(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  const STORAGE_KEY = 'anatomy-lab-v1';
+  const state = { xp, discovered, gamesWon, bestStreak };
+  const level = xpToLevel(xp);
+  const lvlPct = xpInLevel(xp);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (typeof d.xp === 'number') setXp(d.xp);
+        if (Array.isArray(d.discovered)) setDiscovered(new Set(d.discovered));
+        if (typeof d.gamesWon === 'number') setGamesWon(d.gamesWon);
+        if (typeof d.bestStreak === 'number') setBestStreak(d.bestStreak);
+        if (Array.isArray(d.unlocked)) setUnlockedAchievements(new Set(d.unlocked));
+      }
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        xp, discovered:[...discovered], gamesWon, bestStreak,
+        unlocked:[...unlockedAchievements]
+      }));
+    } catch {}
+  }, [hydrated, xp, discovered, gamesWon, bestStreak, unlockedAchievements]);
+
+  useEffect(() => {
+    ACHIEVEMENTS.forEach(a => {
+      if (!unlockedAchievements.has(a.id) && a.check(state)) {
+        setUnlockedAchievements(prev => new Set(prev).add(a.id));
+        setToast({ name:a.name, desc:a.desc, icon:a.icon });
+        setTimeout(() => setToast(null), 4200);
+      }
+    });
+  }, [xp, discovered, gamesWon, bestStreak]);
+
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setInstallPrompt(null));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const installApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
+
+  const grantXp = (amount, reason='') => {
+    setXp(x => x + amount);
+    setXpFloater({ amount, reason, id: Date.now() });
+    setTimeout(() => setXpFloater(null), 1400);
+  };
+
+  const openPart = el => {
+    setSelected(el);
+    if (!discovered.has(el.id)) {
+      setDiscovered(prev => new Set(prev).add(el.id));
+      grantXp(5, `Found ${el.name}!`);
+    }
+  };
+
+  const resetProgress = () => {
+    if (!confirm('Reset all progress? This cannot be undone.')) return;
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    setXp(0); setDiscovered(new Set()); setGamesWon(0); setBestStreak(0);
+    setUnlockedAchievements(new Set());
+  };
+
+  const filteredParts = useMemo(() => {
+    return BODY_PARTS.filter(b => {
+      if (filter !== 'all' && b.sys !== filter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return b.name.toLowerCase().includes(q) || b.sys.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [filter, search]);
+  const filteredSet = useMemo(() => new Set(filteredParts.map(p => p.id)), [filteredParts]);
+
+  return (
+    <div className="min-h-screen w-full text-slate-100 relative overflow-x-hidden font-body">
+      <BackgroundFx />
+      <header className="relative z-10 border-b border-rose-400/20 bg-slate-950/60 backdrop-blur-xl">
+        <div className="header-pad max-w-[1400px] mx-auto px-3 sm:px-6 py-4 flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12 grid place-items-center rounded-xl bg-gradient-to-br from-rose-400 to-fuchsia-500 shadow-[0_0_30px_rgba(244,63,94,0.5)]">
+              <Heart className="w-5 h-5 sm:w-7 sm:h-7 text-white" strokeWidth={2.5} />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
+            <div>
+              <h1 className="font-display text-lg sm:text-2xl tracking-[0.18em] leading-none bg-gradient-to-r from-rose-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">
+                ANATOMY LAB
+              </h1>
+              <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-slate-400 mt-1">BODY EXPLORER</p>
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-2 sm:gap-5 flex-wrap">
+            {installPrompt && (
+              <button onClick={installApp}
+                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-display text-xs tracking-widest flex items-center gap-1.5 shadow-[0_0_20px_rgba(244,63,94,0.4)] hover:scale-105 transition-transform">
+                <Sparkles className="w-3.5 h-3.5" /> INSTALL
+              </button>
+            )}
+            <Stat icon={Sparkles} label="XP"       value={xp}             color="text-rose-300" />
+            <Stat icon={Star}     label="Level"    value={level}          color="text-amber-300" />
+            <Stat icon={Stethoscope} label="Found" value={`${discovered.size}/${BODY_PARTS.length}`} color="text-emerald-300" />
+            <Stat icon={Trophy}   label="Trophies" value={`${unlockedAchievements.size}/${ACHIEVEMENTS.length}`} color="text-fuchsia-300" />
+          </div>
+        </div>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-3">
+          <div className="h-1.5 rounded-full bg-slate-800/80 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-rose-400 via-fuchsia-400 to-amber-400 transition-all duration-700"
+                 style={{ width: `${lvlPct}%` }} />
+          </div>
+        </div>
+        <nav className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-3 flex gap-2 flex-wrap">
+          {[
+            { id:'body',   label:'Body Map',     icon:Heart },
+            { id:'list',   label:'List View',    icon:BookOpen },
+            { id:'games',  label:'Games',        icon:Target },
+            { id:'trophy', label:'Achievements', icon:Trophy },
+            { id:'about',  label:'How To Play',  icon:Lightbulb },
+          ].map(t => (
+            <button key={t.id} onClick={() => { setTab(t.id); setActiveGame(null); }}
+              className={`group px-4 py-2 rounded-lg flex items-center gap-2 text-sm tracking-wider uppercase transition-all border ${
+                tab === t.id
+                  ? 'bg-rose-400/15 border-rose-400/60 text-rose-200 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
+                  : 'border-slate-700/60 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+              }`}>
+              <t.icon className="w-4 h-4" />
+              <span className="font-display text-xs">{t.label}</span>
+            </button>
+          ))}
+        </nav>
+      </header>
+      <main className="relative z-10 max-w-[1400px] mx-auto px-2 sm:px-6 py-6">
+        {tab === 'body' && <BodyDiagram parts={BODY_PARTS} discovered={discovered} filter={filter} setFilter={setFilter} onSelect={openPart} />}
+        {tab === 'list' && <ListView parts={filteredParts} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} discovered={discovered} onSelect={openPart} />}
+        {tab === 'games' && !activeGame && <GamesHub onStart={setActiveGame} />}
+        {tab === 'games' && activeGame === 'diagnose' && <DiagnoseGame onExit={() => setActiveGame(null)} grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} bestStreak={bestStreak} setBestStreak={setBestStreak} />}
+        {tab === 'games' && activeGame === 'detective' && <DetectiveGame onExit={() => setActiveGame(null)} grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} bestStreak={bestStreak} setBestStreak={setBestStreak} />}
+        {tab === 'games' && activeGame === 'speed' && <SpeedGame onExit={() => setActiveGame(null)} grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} />}
+        {tab === 'games' && activeGame === 'memory' && <MemoryGame onExit={() => setActiveGame(null)} grantXp={grantXp} onWin={() => setGamesWon(g=>g+1)} />}
+        {tab === 'trophy' && <AchievementsView state={state} unlocked={unlockedAchievements} />}
+        {tab === 'about' && <AboutView resetProgress={resetProgress} />}
+      </main>
+      {selected && <BodyPartModal part={selected} onClose={() => setSelected(null)} />}
+      {toast && <AchievementToast toast={toast} />}
+      {xpFloater && (
+        <div key={xpFloater.id} className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] pointer-events-none">
+          <div className="px-4 py-2 rounded-full bg-rose-500/95 text-white font-display tracking-wider text-sm shadow-[0_0_30px_rgba(244,63,94,0.7)] animate-xpfloat">
+            +{xpFloater.amount} XP {xpFloater.reason && <span className="opacity-90 normal-case font-body ml-1">{xpFloater.reason}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BodyDiagram({ parts, discovered, filter, setFilter, onSelect }) {
+  return (
+    <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+      <div className="relative rounded-2xl bg-slate-900/40 border border-slate-700/40 p-4 overflow-hidden">
+        <svg viewBox="0 0 100 150" className="w-full max-w-[420px] mx-auto block" style={{ maxHeight: '70vh' }}>
+          <defs>
+            <radialGradient id="bodyGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(244,63,94,0.15)" />
+              <stop offset="100%" stopColor="rgba(244,63,94,0.02)" />
+            </radialGradient>
+          </defs>
+          <ellipse cx="50" cy="75" rx="48" ry="74" fill="url(#bodyGlow)" />
+          {/* Stylized human silhouette */}
+          <g fill="rgba(244,63,94,0.10)" stroke="rgba(244,63,94,0.5)" strokeWidth="0.6" strokeLinejoin="round">
+            <ellipse cx="50" cy="12" rx="9" ry="10" />
+            <rect x="46" y="20" width="8" height="4" rx="1" />
+            <path d="M 32 27 Q 28 27 28 32 L 28 70 Q 28 74 32 74 L 68 74 Q 72 74 72 70 L 72 32 Q 72 27 68 27 Z" />
+            <path d="M 28 31 L 18 68 L 21 70 L 32 36 Z" />
+            <path d="M 72 31 L 82 68 L 79 70 L 68 36 Z" />
+            <path d="M 36 74 Q 35 100 33 138 L 39 140 Q 43 105 43 76 Z" />
+            <path d="M 64 74 Q 65 100 67 138 L 61 140 Q 57 105 57 76 Z" />
+          </g>
+          {/* Hotspots */}
+          {parts.map(p => {
+            const visible = filter === 'all' || filter === p.sys;
+            const isDiscovered = discovered.has(p.id);
+            const fill = SYSTEM_FILL[p.sys] || 'rgba(255,255,255,0.6)';
+            return (
+              <g key={p.id} onClick={() => visible && onSelect(p)} style={{ cursor: visible ? 'pointer' : 'default' }}>
+                <circle cx={p.x} cy={p.y} r={p.r + 2} fill={fill} opacity={visible ? 0.18 : 0.04} />
+                <circle cx={p.x} cy={p.y} r={p.r} fill={fill} opacity={visible ? 0.95 : 0.15}
+                  stroke={isDiscovered ? '#34d399' : 'rgba(255,255,255,0.8)'} strokeWidth="0.4">
+                  <animate attributeName="r" values={`${p.r};${p.r+0.4};${p.r}`} dur="2.4s" repeatCount="indefinite" />
+                </circle>
+                {isDiscovered && visible && (
+                  <circle cx={p.x + p.r * 0.7} cy={p.y - p.r * 0.7} r="0.8" fill="#34d399" stroke="rgba(0,0,0,0.4)" strokeWidth="0.15" />
+                )}
+              </g>
+            );
+          })}
+        </svg>
+        <div className="text-center mt-2 text-xs tracking-widest text-slate-500 font-display">TAP ANY GLOWING ORGAN TO LEARN MORE</div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+          <div className="font-display text-xs tracking-widest text-slate-400 mb-2">FILTER BY SYSTEM</div>
+          <div className="flex flex-wrap gap-1.5">
+            <button onClick={() => setFilter('all')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-display tracking-wider uppercase transition border ${
+                filter === 'all' ? 'bg-rose-400/15 border-rose-400/60 text-rose-200' : 'border-slate-700/60 text-slate-400 hover:text-slate-200'
+              }`}>All</button>
+            {Object.entries(SYSTEMS).map(([k, v]) => (
+              <button key={k} onClick={() => setFilter(k)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-display tracking-wider uppercase transition border ${
+                  filter === k ? 'bg-rose-400/15 border-rose-400/60 text-rose-200' : 'border-slate-700/60 text-slate-400 hover:text-slate-200'
+                }`}>
+                <span className={`inline-block w-2 h-2 rounded-sm mr-1.5 align-middle ${v.dot}`} />{v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50">
+          <div className="font-display text-xs tracking-widest text-slate-400 mb-2">PROGRESS</div>
+          <div className="text-3xl font-display text-rose-300">{discovered.size}<span className="text-slate-500">/{BODY_PARTS.length}</span></div>
+          <div className="text-xs text-slate-400 mt-1">Body parts discovered</div>
+          <div className="mt-3 space-y-1.5">
+            {Object.entries(SYSTEMS).map(([k, v]) => {
+              const total = BODY_PARTS.filter(b => b.sys === k).length;
+              const found = BODY_PARTS.filter(b => b.sys === k && discovered.has(b.id)).length;
+              return (
+                <div key={k} className="flex items-center justify-between text-xs">
+                  <span className={v.text}><span className={`inline-block w-2 h-2 rounded-sm mr-1.5 align-middle ${v.dot}`} />{v.label}</span>
+                  <span className="text-slate-500 font-mono">{found}/{total}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ListView({ parts, filter, setFilter, search, setSearch, discovered, onSelect }) {
+  return (
+    <div>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input type="text" placeholder="Search by name or system..."
+                 value={search} onChange={e => setSearch(e.target.value)}
+                 className="w-full pl-10 pr-3 py-2 rounded-lg bg-slate-900/70 border border-slate-700/60 focus:border-rose-400/60 focus:outline-none text-sm" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => setFilter('all')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-display tracking-wider uppercase transition border ${
+              filter === 'all' ? 'bg-rose-400/15 border-rose-400/60 text-rose-200' : 'border-slate-700/60 text-slate-400'
+            }`}>All</button>
+          {Object.entries(SYSTEMS).map(([k, v]) => (
+            <button key={k} onClick={() => setFilter(k)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-display tracking-wider uppercase transition border ${
+                filter === k ? 'bg-rose-400/15 border-rose-400/60 text-rose-200' : 'border-slate-700/60 text-slate-400'
+              }`}>{v.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {parts.map(p => {
+          const sys = SYSTEMS[p.sys];
+          const isDiscovered = discovered.has(p.id);
+          return (
+            <button key={p.id} onClick={() => onSelect(p)}
+              className={`relative p-4 rounded-xl text-left border bg-gradient-to-br ${sys.tile} hover:scale-[1.02] transition-all`}>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">{p.emoji}</div>
+                <div className="flex-1">
+                  <div className="font-display text-lg text-white tracking-wide">{p.name}</div>
+                  <div className="text-[10px] text-white/70 tracking-widest uppercase">{sys.label}{p.vital && ' · VITAL'}</div>
+                </div>
+                {isDiscovered && <Check className="w-4 h-4 text-emerald-300" strokeWidth={3} />}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function BodyPartModal({ part, onClose }) {
+  const sys = SYSTEMS[part.sys];
+  useEffect(() => {
+    const handle = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4 animate-fadein" onClick={onClose}>
+      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" />
+      <div onClick={e => e.stopPropagation()}
+           className="relative w-full max-w-3xl bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-[0_0_60px_rgba(244,63,94,0.25)] overflow-hidden animate-slideup">
+        <div className={`relative bg-gradient-to-br ${sys.tile} p-6 sm:p-8 overflow-hidden`}>
+          <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 p-2.5 rounded-full bg-black/40 hover:bg-black/60 text-white">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="pointer-events-none absolute -bottom-12 -right-8 text-[180px] sm:text-[200px] leading-none select-none opacity-25">{part.emoji}</div>
+          <div className="relative">
+            <div className="font-mono text-xs text-white/80 tracking-widest uppercase">{sys.label}{part.vital && ' · Vital Organ'}</div>
+            <div className="font-display text-4xl sm:text-5xl text-white drop-shadow-lg leading-tight mt-1">{part.name}</div>
+          </div>
+        </div>
+        <div className="p-6 sm:p-8 space-y-5 max-h-[60vh] overflow-y-auto custom-scroll">
+          <Section icon={BookOpen} title="What it is" color="text-rose-300">
+            <p className="text-slate-200 leading-relaxed">{part.desc}</p>
+          </Section>
+          <Section icon={Activity} title="What it does" color="text-rose-300">
+            <p className="text-slate-200 leading-relaxed">{part.job}</p>
+          </Section>
+          <Section icon={Lightbulb} title="Mind-Blowing Fact" color="text-rose-300">
+            <p className="font-fact text-amber-200 text-lg leading-relaxed">{part.fact}</p>
+          </Section>
+          <Section icon={AlertTriangle} title="When something goes wrong" color="text-rose-300">
+            <p className="text-slate-300 leading-relaxed text-sm">{part.sx}</p>
+          </Section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiagnoseGame({ onExit, grantXp, onWin, bestStreak, setBestStreak }) {
+  const ROUNDS = 6;
+  const [round, setRound] = useState(0);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [puzzle, setPuzzle] = useState(null);
+  const [picked, setPicked] = useState(null);
+
+  useEffect(() => { newRound(); }, []);
+  function newRound() {
+    const answer = rand(BODY_PARTS);
+    const wrong = shuffle(BODY_PARTS.filter(p => p.id !== answer.id)).slice(0, 3);
+    setPuzzle({ answer, choices: shuffle([answer, ...wrong]) });
+    setPicked(null);
+  }
+  function pick(p) {
+    if (picked) return;
+    setPicked(p);
+    const right = p.id === puzzle.answer.id;
+    if (right) {
+      setScore(s => s + 1);
+      const ns = streak + 1;
+      setStreak(ns);
+      if (ns > bestStreak) setBestStreak(ns);
+      grantXp(15, 'Right call!');
+    } else {
+      setStreak(0);
+    }
+    setTimeout(() => {
+      if (round + 1 >= ROUNDS) {
+        if (score + (right ? 1 : 0) >= 4) onWin();
+        setRound(ROUNDS);
+      } else {
+        setRound(r => r + 1);
+        newRound();
+      }
+    }, 1500);
+  }
+  if (!puzzle) return null;
+  if (round >= ROUNDS) {
+    return <GameResult title="Case Closed" score={score} total={`out of ${ROUNDS}`}
+      message={score >= 4 ? 'Sharp diagnosis. The patient thanks you.' : 'Tricky symptoms. Try again to nail more diagnoses.'}
+      onPlayAgain={() => { setRound(0); setScore(0); setStreak(0); newRound(); }} onExit={onExit} accent="rose" />;
+  }
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Diagnose the Patient" round={round+1} total={ROUNDS} score={score} streak={streak} />
+      <div className="mt-6 max-w-2xl mx-auto">
+        <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60">
+          <div className="text-xs tracking-widest text-rose-300 mb-3 font-display">PATIENT PRESENTS WITH</div>
+          <p className="text-slate-100 text-lg leading-relaxed">{puzzle.answer.sx}</p>
+          <div className="text-xs text-slate-500 mt-3 font-display tracking-wider">WHICH BODY PART IS LIKELY INVOLVED?</div>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          {puzzle.choices.map(c => {
+            const sys = SYSTEMS[c.sys];
+            const isAnswer = picked && c.id === puzzle.answer.id;
+            const isWrong = picked && picked.id === c.id && c.id !== puzzle.answer.id;
+            return (
+              <button key={c.id} onClick={() => pick(c)} disabled={!!picked}
+                className={`p-4 rounded-xl text-left transition-all border ${
+                  picked ? (
+                    isAnswer ? 'bg-emerald-500/30 border-emerald-400 scale-105' :
+                    isWrong ? 'bg-red-500/30 border-red-400' :
+                    'opacity-40 border-slate-700'
+                  ) : `bg-gradient-to-br ${sys.tile} border-transparent hover:scale-[1.02]`
+                }`}>
+                <div className="text-3xl">{c.emoji}</div>
+                <div className="font-display text-lg text-white mt-1">{c.name}</div>
+                <div className="text-[10px] text-white/80 tracking-widest uppercase">{sys.label}</div>
+              </button>
+            );
+          })}
+        </div>
+        {picked && (
+          <div className={`mt-4 p-3 rounded-lg text-sm ${picked.id === puzzle.answer.id ? 'bg-emerald-500/15 text-emerald-200' : 'bg-red-500/15 text-red-200'}`}>
+            <strong>{puzzle.answer.name}.</strong> {puzzle.answer.job}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DetectiveGame({ onExit, grantXp, onWin, bestStreak, setBestStreak }) {
+  const ROUNDS = 6;
+  const [round, setRound] = useState(0);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [puzzle, setPuzzle] = useState(null);
+  const [picked, setPicked] = useState(null);
+
+  useEffect(() => { newRound(); }, []);
+  function newRound() {
+    const answer = rand(BODY_PARTS);
+    const wrong = shuffle(BODY_PARTS.filter(p => p.id !== answer.id)).slice(0, 3);
+    setPuzzle({ answer, choices: shuffle([answer, ...wrong]) });
+    setPicked(null);
+  }
+  function pick(p) {
+    if (picked) return;
+    setPicked(p);
+    const right = p.id === puzzle.answer.id;
+    if (right) {
+      setScore(s => s + 1);
+      const ns = streak + 1; setStreak(ns);
+      if (ns > bestStreak) setBestStreak(ns);
+      grantXp(15, 'Solved!');
+    } else { setStreak(0); }
+    setTimeout(() => {
+      if (round + 1 >= ROUNDS) {
+        if (score + (right ? 1 : 0) >= 4) onWin();
+        setRound(ROUNDS);
+      } else {
+        setRound(r => r + 1); newRound();
+      }
+    }, 1500);
+  }
+  if (!puzzle) return null;
+  if (round >= ROUNDS) {
+    return <GameResult title="Detective Closed The Case" score={score} total={`out of ${ROUNDS}`}
+      message={score >= 4 ? 'Excellent deduction.' : 'Good run. Try again.'}
+      onPlayAgain={() => { setRound(0); setScore(0); setStreak(0); newRound(); }} onExit={onExit} accent="rose" />;
+  }
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Anatomy Detective" round={round+1} total={ROUNDS} score={score} streak={streak} />
+      <div className="mt-6 max-w-3xl mx-auto">
+        <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60 space-y-2">
+          <Clue n={1} text={`I belong to the ${SYSTEMS[puzzle.answer.sys].label.toLowerCase()} system.`} />
+          <Clue n={2} text={`My job is: ${puzzle.answer.job.split('.')[0]}.`} />
+          <Clue n={3} text={puzzle.answer.fact} />
+        </div>
+        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {puzzle.choices.map(c => {
+            const sys = SYSTEMS[c.sys];
+            const isAnswer = picked && c.id === puzzle.answer.id;
+            const isWrong = picked && picked.id === c.id && c.id !== puzzle.answer.id;
+            return (
+              <button key={c.id} onClick={() => pick(c)} disabled={!!picked}
+                className={`p-4 rounded-xl text-center transition-all border ${
+                  picked ? (
+                    isAnswer ? 'bg-emerald-500/30 border-emerald-400 scale-105' :
+                    isWrong ? 'bg-red-500/30 border-red-400' :
+                    'opacity-40 border-slate-700'
+                  ) : `bg-gradient-to-br ${sys.tile} border-transparent hover:scale-105`
+                }`}>
+                <div className="text-3xl">{c.emoji}</div>
+                <div className="font-display text-base text-white mt-1">{c.name}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Clue({ n, text }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-950/60 border border-slate-700/40 animate-slidein">
+      <div className="w-7 h-7 rounded-full bg-rose-400/15 border border-rose-400/40 grid place-items-center font-display text-rose-300 text-xs flex-shrink-0">{n}</div>
+      <p className="text-slate-200 text-sm leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
+function SpeedGame({ onExit, grantXp, onWin }) {
+  const [time, setTime] = useState(45);
+  const [score, setScore] = useState(0);
+  const [over, setOver] = useState(false);
+  const [puzzle, setPuzzle] = useState(null);
+  const [picked, setPicked] = useState(null);
+
+  useEffect(() => { newPuzzle(); }, []);
+  useEffect(() => {
+    if (over) return;
+    if (time <= 0) { setOver(true); grantXp(score * 5, 'Speed bonus!'); if (score >= 8) onWin(); return; }
+    const t = setTimeout(() => setTime(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [time, over]);
+  function newPuzzle() {
+    const answer = rand(BODY_PARTS);
+    const others = shuffle(BODY_PARTS.filter(p => p.id !== answer.id)).slice(0, 3);
+    setPuzzle({ answer, choices: shuffle([answer, ...others]) });
+    setPicked(null);
+  }
+  function pick(p) {
+    if (picked || over) return;
+    setPicked(p);
+    if (p.id === puzzle.answer.id) { setScore(s => s + 1); setTimeout(newPuzzle, 350); }
+    else { setTime(t => Math.max(0, t - 3)); setTimeout(newPuzzle, 600); }
+  }
+  if (over) return <GameResult title="Time's Up!" score={score} total="matches" message={score >= 8 ? 'Lightning reflexes!' : 'Faster next time?'}
+    onPlayAgain={() => { setScore(0); setTime(45); setOver(false); newPuzzle(); }} onExit={onExit} accent="rose" />;
+  if (!puzzle) return null;
+  const sys = SYSTEMS[puzzle.answer.sys];
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Body Builder Speed" extra={<div className="flex items-center gap-2 text-amber-300"><Timer className="w-4 h-4" /><span className="font-display text-lg tabular-nums">{time}s</span></div>} score={score} />
+      <div className="mt-6 max-w-2xl mx-auto">
+        <div className="text-center mb-1 text-xs tracking-widest text-slate-400 font-display">WHICH BODY PART IS THIS?</div>
+        <div className={`mx-auto w-40 h-40 rounded-2xl bg-gradient-to-br ${sys.tile} grid place-items-center shadow-[0_0_50px_rgba(244,63,94,0.3)] mb-6`}>
+          <div className="text-7xl">{puzzle.answer.emoji}</div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {puzzle.choices.map(c => {
+            const isAnswer = picked && c.id === puzzle.answer.id;
+            const isWrong = picked && picked.id === c.id && c.id !== puzzle.answer.id;
+            return (
+              <button key={c.id} onClick={() => pick(c)} disabled={!!picked}
+                className={`p-4 rounded-xl text-left transition-all border ${
+                  picked ? (
+                    isAnswer ? 'bg-emerald-500/30 border-emerald-400' :
+                    isWrong ? 'bg-red-500/30 border-red-400' :
+                    'opacity-50 border-slate-700'
+                  ) : 'bg-slate-900/70 border-slate-700/60 hover:border-rose-400/60'
+                }`}>
+                <div className="font-display text-lg text-white">{c.name}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{SYSTEMS[c.sys].label}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-4 text-center text-xs text-slate-500">Wrong answer = -3 seconds.</div>
+      </div>
+    </div>
+  );
+}
+
+function MemoryGame({ onExit, grantXp, onWin }) {
+  const [cards, setCards] = useState([]);
+  const [flipped, setFlipped] = useState([]);
+  const [matched, setMatched] = useState(new Set());
+  const [moves, setMoves] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => { reset(); }, []);
+  function reset() {
+    const picks = shuffle(BODY_PARTS).slice(0, 8);
+    const sym = picks.map(p => ({ id:`s-${p.id}`, kind:'emoji', p }));
+    const nm = picks.map(p => ({ id:`n-${p.id}`, kind:'name', p }));
+    setCards(shuffle([...sym, ...nm]));
+    setFlipped([]); setMatched(new Set()); setMoves(0); setDone(false);
+  }
+  function flip(card) {
+    if (flipped.length === 2 || flipped.find(c => c.id === card.id) || matched.has(card.p.id)) return;
+    const nf = [...flipped, card];
+    setFlipped(nf);
+    if (nf.length === 2) {
+      setMoves(m => m + 1);
+      const [a, b] = nf;
+      if (a.p.id === b.p.id && a.kind !== b.kind) {
+        const next = new Set(matched).add(a.p.id);
+        setTimeout(() => {
+          setMatched(next); setFlipped([]); grantXp(8, 'Match!');
+          if (next.size === 8) {
+            setDone(true); onWin();
+            const bonus = Math.max(0, 15 - moves) * 5;
+            if (bonus) grantXp(bonus, 'Efficiency bonus');
+          }
+        }, 600);
+      } else {
+        setTimeout(() => setFlipped([]), 900);
+      }
+    }
+  }
+  if (done) return <GameResult title="Memory Master!" score={moves} total="moves"
+    message={moves <= 12 ? 'Photographic memory!' : 'Solid work.'}
+    onPlayAgain={reset} onExit={onExit} accent="rose" />;
+  return (
+    <div>
+      <GameHeader onExit={onExit} title="Anatomy Memory"
+        extra={<div className="text-sm text-slate-300">Moves: <span className="font-display text-amber-300">{moves}</span></div>}
+        score={`${matched.size}/8`} />
+      <div className="mt-6 max-w-3xl mx-auto grid grid-cols-4 gap-2 sm:gap-3">
+        {cards.map(card => {
+          const isFlipped = flipped.find(c => c.id === card.id) || matched.has(card.p.id);
+          const isMatched = matched.has(card.p.id);
+          const sys = SYSTEMS[card.p.sys];
+          return (
+            <button key={card.id} onClick={() => flip(card)}
+              className={`aspect-square rounded-xl transition-all duration-500 perspective-card ${isMatched ? 'opacity-60' : ''}`}>
+              <div className={`relative w-full h-full transition-transform duration-500 transform-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+                <div className="absolute inset-0 backface-hidden rounded-xl bg-slate-900/80 border border-slate-700/60 grid place-items-center hover:border-rose-400/50">
+                  <Heart className="w-7 h-7 text-slate-600" />
+                </div>
+                <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-xl bg-gradient-to-br ${sys.tile} grid place-items-center p-2`}>
+                  {card.kind === 'emoji' ? <div className="text-4xl">{card.p.emoji}</div>
+                    : <div className="text-center"><div className="font-display text-sm text-white">{card.p.name}</div></div>}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function GamesHub({ onStart }) {
+  const games = [
+    { id:'diagnose',  name:'Diagnose the Patient', desc:'Read symptoms, identify the right organ. Like a real doctor.',  icon:Stethoscope, color:'from-rose-500 to-red-600', diff:'CLINICAL' },
+    { id:'detective', name:'Anatomy Detective',    desc:'Three clues, four suspects. Find the body part fast.',          icon:Lightbulb,   color:'from-violet-500 to-purple-600', diff:'TRICKY' },
+    { id:'speed',     name:'Body Builder Speed',   desc:'Match emojis to body parts before time runs out.',              icon:Timer,       color:'from-amber-500 to-orange-600', diff:'FAST' },
+    { id:'memory',    name:'Anatomy Memory',       desc:'Flip and match emoji cards with body part names.',              icon:Sparkle,     color:'from-emerald-500 to-teal-600', diff:'CLASSIC' },
+  ];
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="font-display text-3xl tracking-wider text-white">Choose Your Challenge</h2>
+        <p className="text-slate-400 text-sm mt-1">Each game earns XP, levels up your scientist, and unlocks trophies.</p>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        {games.map(g => (
+          <button key={g.id} onClick={() => onStart(g.id)}
+            className="group relative text-left p-6 rounded-2xl bg-slate-900/70 border border-slate-700/60 hover:border-rose-400/50 transition-all overflow-hidden hover:shadow-[0_0_30px_rgba(244,63,94,0.18)]">
+            <div className={`absolute -top-12 -right-12 w-44 h-44 rounded-full bg-gradient-to-br ${g.color} opacity-20 blur-2xl group-hover:opacity-40`} />
+            <div className={`relative w-12 h-12 grid place-items-center rounded-xl bg-gradient-to-br ${g.color} mb-4 shadow-lg`}>
+              <g.icon className="w-6 h-6 text-white" strokeWidth={2.2} />
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-display text-xl text-white tracking-wide">{g.name}</h3>
+              <span className="text-[10px] tracking-widest text-rose-300 px-1.5 py-0.5 rounded bg-rose-400/10 border border-rose-400/30">{g.diff}</span>
+            </div>
+            <p className="text-slate-400 text-sm leading-relaxed">{g.desc}</p>
+            <div className="mt-4 flex items-center gap-1.5 text-rose-300 text-sm font-display tracking-wider">
+              PLAY <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AchievementsView({ state, unlocked }) {
+  return (
+    <div>
+      <h2 className="font-display text-3xl tracking-wider text-white mb-1">Trophy Cabinet</h2>
+      <p className="text-slate-400 text-sm mb-6">Unlocked {unlocked.size} of {ACHIEVEMENTS.length} trophies</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {ACHIEVEMENTS.map(a => {
+          const earned = unlocked.has(a.id);
+          const Icon = a.icon;
+          return (
+            <div key={a.id} className={`relative p-5 rounded-2xl border transition-all ${
+              earned
+                ? 'bg-gradient-to-br from-amber-500/15 to-rose-500/15 border-amber-400/50 shadow-[0_0_25px_rgba(251,191,36,0.2)]'
+                : 'bg-slate-900/60 border-slate-700/50'
+            }`}>
+              <div className={`w-11 h-11 grid place-items-center rounded-xl mb-3 ${
+                earned ? 'bg-gradient-to-br from-amber-400 to-rose-500 text-slate-900' : 'bg-slate-800 text-slate-600'
+              }`}>
+                {earned ? <Icon className="w-6 h-6" strokeWidth={2.4} /> : <Lock className="w-5 h-5" />}
+              </div>
+              <h3 className={`font-display text-lg tracking-wide ${earned ? 'text-amber-200' : 'text-slate-400'}`}>{a.name}</h3>
+              <p className="text-sm text-slate-400 mt-1">{a.desc}</p>
+              {earned && <div className="absolute top-3 right-3 text-[10px] tracking-widest text-amber-300 font-display">UNLOCKED</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AboutView({ resetProgress }) {
+  return (
+    <div className="max-w-3xl mx-auto">
+      <h2 className="font-display text-3xl tracking-wider text-white mb-4">How To Play</h2>
+      <div className="space-y-4 text-slate-300 leading-relaxed">
+        <Card icon={Heart} title="Tap any glowing organ" accent="text-rose-300" accentBg="bg-rose-400/15 border-rose-400/40">
+          On the Body Map, every body part glows. Tap it to learn what it does, what surprising fact it hides, and what symptoms appear when something goes wrong. First-time discoveries earn +5 XP.
+        </Card>
+        <Card icon={Search} title="Filter by system" accent="text-rose-300" accentBg="bg-rose-400/15 border-rose-400/40">
+          Use the system filter to focus on just digestive, just nervous, just skeletal, etc. Helps you see how related parts work together.
+        </Card>
+        <Card icon={Stethoscope} title="Diagnose like a doctor" accent="text-rose-300" accentBg="bg-rose-400/15 border-rose-400/40">
+          The Diagnose game gives you a patient's symptoms. Your job is to figure out which body part is involved. Real doctors do this every day.
+        </Card>
+        <Card icon={Trophy} title="Collect 12 trophies" accent="text-rose-300" accentBg="bg-rose-400/15 border-rose-400/40">
+          Find every vital organ, get a 5-streak in any game, reach Level 10, and more.
+        </Card>
+        <Card icon={Sparkles} title="Install on your phone" accent="text-rose-300" accentBg="bg-rose-400/15 border-rose-400/40">
+          On Android, tap the INSTALL button in the header. On iPhone, use Safari's Share menu and tap Add to Home Screen. The lab installs as an app and works without internet.
+        </Card>
+        <div className="p-5 rounded-2xl bg-red-500/10 border border-red-400/30">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 grid place-items-center rounded-lg bg-red-400/15 border border-red-400/40">
+              <RefreshCw className="w-4 h-4 text-red-300" />
+            </div>
+            <h3 className="font-display text-lg tracking-wide text-white">Reset Progress</h3>
+          </div>
+          <p className="mb-3">Wipe all XP, discoveries, and trophies and start over.</p>
+          <button onClick={resetProgress} className="px-4 py-2 rounded-lg bg-red-500/80 hover:bg-red-500 text-white font-display text-xs tracking-widest">RESET EVERYTHING</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BackgroundFx() {
+  return (
+    <>
+      <div className="fixed inset-0 -z-10 bg-[#1a0816]" />
+      <div className="fixed inset-0 -z-10 opacity-50" style={{
+        background: 'radial-gradient(900px 600px at 20% -10%, rgba(244,63,94,0.18), transparent 60%), radial-gradient(900px 700px at 110% 10%, rgba(217,70,239,0.16), transparent 60%), radial-gradient(800px 600px at 50% 130%, rgba(251,191,36,0.10), transparent 60%)'
+      }} />
+      <div className="fixed inset-0 -z-10" style={{
+        backgroundImage: 'linear-gradient(rgba(244,63,94,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(244,63,94,0.05) 1px, transparent 1px)',
+        backgroundSize: '48px 48px',
+        maskImage: 'radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent)'
+      }} />
+    </>
+  );
+}
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+    requestAnimationFrame(() => {
+      const boot = document.getElementById('boot');
+      if (boot) { boot.style.opacity = '0'; setTimeout(() => boot.remove(), 450); }
+    });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
